@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Instalador e empacotamento
 
 O projeto inclui:
@@ -66,4 +65,3 @@ Summary sheet with department aggregation
 Built-in charts for quick visualization
 Clean and intuitive desktop interface (no browser required)
 This tool bridges the gap between raw time tracking exports and real workforce analytics, eliminating manual Excel work and enabling faster, more reliable decision-making.
->>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
