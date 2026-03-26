@@ -1,0 +1,79 @@
+# =========================
+# PYTHON
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# =========================
+# VIRTUAL ENV
+# =========================
+.venv/
+venv/
+env/
+ENV/
+
+# =========================
+# BUILD / DIST (PyInstaller)
+# =========================
+build/
+dist/
+*.spec
+*.exe
+*.manifest
+
+# =========================
+# TEST / CACHE
+# =========================
+.pytest_cache/
+.coverage
+htmlcov/
+
+# =========================
+# LOGS / TEMP
+# =========================
+*.log
+logs/
+*.tmp
+*.temp
+
+# =========================
+# DATABASE / LOCAL FILES
+# =========================
+*.sqlite3
+*.db
+
+# =========================
+# APP DATA (ajuste se precisar versionar)
+# =========================
+data/history.json
+data/audit.json
+data/preferences.json
+
+# =========================
+# IDE / EDITOR
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# SISTEMA OPERACIONAL
+# =========================
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# =========================
+# ENV VARS / SEGURANÇA
+# =========================
+.env
+.env.*
+
+# =========================
+# MISC
+# =========================
+*.bak
+*.swp
