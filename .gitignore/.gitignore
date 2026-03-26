@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+build/
+dist/
+*.spec
+.pytest_cache/
+logs/
+uploads/
+data/history.json
+data/audit.json
+data/preferences.json

@@ -1,0 +1,202 @@
+[
+  {
+    "data_hora": "25/03/2026 16:16:06",
+    "acao": "processamento_lote",
+    "detalhes": {
+      "processados": 1,
+      "ignorados": 0,
+      "departamento": "Todos",
+      "pasta_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Documents"
+    }
+  },
+  {
+    "data_hora": "25/03/2026 16:16:01",
+    "acao": "arquivos_selecionados",
+    "detalhes": {
+      "quantidade": 1
+    }
+  },
+  {
+    "data_hora": "25/03/2026 16:13:44",
+    "acao": "processamento_lote",
+    "detalhes": {
+      "processados": 1,
+      "ignorados": 0,
+      "departamento": "Todos",
+      "pasta_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Documents"
+    }
+  },
+  {
+    "data_hora": "25/03/2026 16:13:38",
+    "acao": "arquivos_selecionados",
+    "detalhes": {
+      "quantidade": 1
+    }
+  },
+  {
+    "data_hora": "25/03/2026 15:56:53",
+    "acao": "processamento_lote",
+    "detalhes": {
+      "processados": 1,
+      "ignorados": 0,
+      "departamento": "Todos",
+      "pasta_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Documents"
+    }
+  },
+  {
+    "data_hora": "25/03/2026 15:56:50",
+    "acao": "arquivos_selecionados",
+    "detalhes": {
+      "quantidade": 1
+    }
+  },
+  {
+    "data_hora": "25/03/2026 15:53:52",
+    "acao": "processamento_lote",
+    "detalhes": {
+      "processados": 1,
+      "ignorados": 0,
+      "departamento": "Todos",
+      "pasta_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Pictures"
+    }
+  },
+  {
+    "data_hora": "25/03/2026 15:53:48",
+    "acao": "arquivos_selecionados",
+    "detalhes": {
+      "quantidade": 1
+    }
+  },
+  {
+    "data_hora": "25/03/2026 15:53:00",
+    "acao": "processamento_lote",
+    "detalhes": {
+      "processados": 1,
+      "ignorados": 0,
+      "departamento": "Todos",
+      "pasta_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Documents"
+    }
+  },
+  {
+    "data_hora": "25/03/2026 15:52:54",
+    "acao": "arquivos_selecionados",
+    "detalhes": {
+      "quantidade": 1
+    }
+  },
+  {
+    "data_hora": "25/03/2026 15:41:04",
+    "acao": "processamento_lote",
+    "detalhes": {
+      "processados": 1,
+      "ignorados": 0,
+      "departamento": "Todos",
+      "pasta_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Desktop"
+    }
+  },
+  {
+    "data_hora": "25/03/2026 15:40:55",
+    "acao": "arquivos_selecionados",
+    "detalhes": {
+      "quantidade": 1
+    }
+  },
+  {
+    "data_hora": "25/03/2026 15:33:13",
+    "acao": "processamento_lote",
+    "detalhes": {
+      "processados": 1,
+      "ignorados": 0,
+      "departamento": "Todos",
+      "pasta_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Documents"
+    }
+  },
+  {
+    "data_hora": "25/03/2026 15:32:44",
+    "acao": "processamento_lote",
+    "detalhes": {
+      "processados": 1,
+      "ignorados": 0,
+      "departamento": "Todos",
+      "pasta_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Documents"
+    }
+  },
+  {
+    "data_hora": "25/03/2026 15:32:25",
+    "acao": "processamento_lote",
+    "detalhes": {
+      "processados": 1,
+      "ignorados": 0,
+      "departamento": "TECNOLOGIA DA INFORMAÇÃO",
+      "pasta_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Pictures"
+    }
+  },
+  {
+    "data_hora": "25/03/2026 15:32:11",
+    "acao": "arquivos_selecionados",
+    "detalhes": {
+      "quantidade": 1
+    }
+  },
+  {
+    "data_hora": "25/03/2026 14:51:53",
+    "acao": "processamento_lote",
+    "detalhes": {
+      "processados": 1,
+      "ignorados": 0,
+      "departamento": "TECNOLOGIA DA INFORMAÇÃO",
+      "pasta_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Documents"
+    }
+  },
+  {
+    "data_hora": "25/03/2026 14:50:35",
+    "acao": "arquivos_selecionados",
+    "detalhes": {
+      "quantidade": 1
+    }
+  },
+  {
+    "data_hora": "25/03/2026 14:40:26",
+    "acao": "processamento_lote",
+    "detalhes": {
+      "processados": 1,
+      "ignorados": 0,
+      "departamento": "TECNOLOGIA DA INFORMAÇÃO",
+      "pasta_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Desktop"
+    }
+  },
+  {
+    "data_hora": "25/03/2026 14:38:52",
+    "acao": "arquivos_selecionados",
+    "detalhes": {
+      "quantidade": 1
+    }
+  },
+  {
+    "data_hora": "25/03/2026 14:36:36",
+    "acao": "processamento_lote",
+    "detalhes": {
+      "processados": 1,
+      "ignorados": 0,
+      "departamento": "Todos",
+      "pasta_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Desktop"
+    }
+  },
+  {
+    "data_hora": "25/03/2026 14:36:03",
+    "acao": "processamento_lote",
+    "detalhes": {
+      "processados": 1,
+      "ignorados": 0,
+      "departamento": "JURIDICO",
+      "pasta_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Desktop"
+    }
+  },
+  {
+    "data_hora": "25/03/2026 14:35:40",
+    "acao": "arquivos_selecionados",
+    "detalhes": {
+      "quantidade": 1
+    }
+  }
+]
