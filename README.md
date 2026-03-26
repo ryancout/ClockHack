@@ -42,7 +42,7 @@ O instalador padrao do Windows sera gerado em:
 ```bat
 dist\ProcessadorPlanilhasFAS_Setup.exe
 ```
-=======
+
 # ClockHack
 Advanced workforce time analyzer that processes Excel/CSV files, calculates balances, highlights anomalies, and generates automated insights like rankings and department analytics.
 
