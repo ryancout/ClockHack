@@ -1,6 +1,10 @@
 import os
+<<<<<<< HEAD
 from collections import OrderedDict
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+=======
+from openpyxl.chart import BarChart, Reference
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
 
 from app.services.reader_service import carregar_workbook
 from app.services.validator_service import mapear_colunas, validar_colunas, validar_resultado
@@ -37,6 +41,7 @@ def obter_departamentos(caminho_arquivo):
         raise Exception(f"Erro ao listar departamentos: {e}")
 
 
+<<<<<<< HEAD
 def _estilos_resumo():
     borda = Border(
         left=Side(style="thin", color="D5DFE8"),
@@ -58,10 +63,20 @@ def _estilos_resumo():
 
 
 def criar_aba_ranking(wb, dados):
+=======
+def criar_aba_ranking(wb, dados):
+    """
+    Cria uma aba com:
+    - TOP devedores (mais saldo negativo)
+    - TOP hora extra (mais saldo positivo)
+    """
+    # se já existir, remove e recria
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
     if "RANKING" in wb.sheetnames:
         del wb["RANKING"]
 
     ws = wb.create_sheet("RANKING")
+<<<<<<< HEAD
     estilos = _estilos_resumo()
 
     negativos = sorted([d for d in dados if d["saldo"] < 0], key=lambda x: x["saldo"])
@@ -103,18 +118,79 @@ def criar_aba_ranking(wb, dados):
 
 
 def criar_aba_resumo(wb, dados):
+=======
+
+    # separar dados
+    negativos = sorted(
+        [d for d in dados if d["saldo"] < 0],
+        key=lambda x: x["saldo"]
+    )
+
+    positivos = sorted(
+        [d for d in dados if d["saldo"] > 0],
+        key=lambda x: x["saldo"],
+        reverse=True
+    )
+
+    linha = 1
+
+    # título 1
+    ws.cell(row=linha, column=1, value="TOP DEVEDORES")
+    linha += 1
+
+    ws.append(["Funcionário", "Departamento", "Banco Saldo"])
+    linha += 1
+
+    for d in negativos[:10]:
+        ws.append([d["nome"], d["departamento"], d["saldo_fmt"]])
+        linha += 1
+
+    linha += 2
+
+    # título 2
+    ws.cell(row=linha, column=1, value="TOP HORAS EXTRAS")
+    linha += 1
+
+    ws.append(["Funcionário", "Departamento", "Banco Saldo"])
+    linha += 1
+
+    for d in positivos[:10]:
+        ws.append([d["nome"], d["departamento"], d["saldo_fmt"]])
+
+    # ajustar largura básica
+    ws.column_dimensions["A"].width = 40
+    ws.column_dimensions["B"].width = 30
+    ws.column_dimensions["C"].width = 15
+
+
+def criar_aba_resumo(wb, dados):
+    """
+    Cria uma aba RESUMO com:
+    - total de horas por departamento
+    - gráfico automático
+    """
+    # se já existir, remove e recria
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
     if "RESUMO" in wb.sheetnames:
         del wb["RESUMO"]
 
     ws = wb.create_sheet("RESUMO")
+<<<<<<< HEAD
     estilos = _estilos_resumo()
 
     resumo = OrderedDict()
     for d in sorted(dados, key=lambda item: str(item["departamento"] or "SEM DEPARTAMENTO").lower()):
+=======
+
+    resumo = {}
+
+    for d in dados:
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
         departamento = d["departamento"] if d["departamento"] not in (None, "") else "SEM DEPARTAMENTO"
         resumo.setdefault(departamento, 0)
         resumo[departamento] += d["saldo"]
 
+<<<<<<< HEAD
     ws["A1"] = "Resumo por departamento"
     ws["A1"].font = estilos["titulo"]
     ws.merge_cells("A1:C1")
@@ -169,6 +245,33 @@ def criar_aba_resumo(wb, dados):
     ws.column_dimensions["B"].width = 16
     ws.column_dimensions["C"].hidden = True
 
+=======
+    ws.append(["Departamento", "Horas"])
+
+    for departamento, total_min in resumo.items():
+        total_horas = total_min / 60
+        ws.append([departamento, total_horas])
+
+    ws.column_dimensions["A"].width = 30
+    ws.column_dimensions["B"].width = 15
+
+    # gráfico
+    if len(resumo) > 0:
+        chart = BarChart()
+        chart.title = "Horas por Departamento"
+        chart.y_axis.title = "Horas"
+        chart.x_axis.title = "Departamento"
+        chart.height = 8
+        chart.width = 16
+
+        data = Reference(ws, min_col=2, min_row=1, max_row=len(resumo) + 1)
+        cats = Reference(ws, min_col=1, min_row=2, max_row=len(resumo) + 1)
+
+        chart.add_data(data, titles_from_data=True)
+        chart.set_categories(cats)
+
+        ws.add_chart(chart, "D2")
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
 
 
 def processar_arquivo(caminho_arquivo, caminho_saida, departamento="Todos"):
@@ -183,8 +286,15 @@ def processar_arquivo(caminho_arquivo, caminho_saida, departamento="Todos"):
     col_bt = colunas["banco total"]
     col_bs = colunas["banco saldo"]
 
+<<<<<<< HEAD
     aplicar_filtro_departamento(ws, col_depart, departamento)
 
+=======
+    # aplica filtro por departamento antes de processar
+    aplicar_filtro_departamento(ws, col_depart, departamento)
+
+    # coleta dados para ranking e resumo
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
     dados = []
     for row in range(2, ws.max_row + 1):
         nome = ws.cell(row=row, column=col_nome).value
@@ -195,28 +305,56 @@ def processar_arquivo(caminho_arquivo, caminho_saida, departamento="Todos"):
             continue
 
         saldo_min = para_minutos(saldo_valor)
+<<<<<<< HEAD
+=======
+
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
         dados.append({
             "nome": nome,
             "departamento": dep,
             "saldo": saldo_min,
+<<<<<<< HEAD
             "saldo_fmt": formatar_horas(saldo_min),
         })
 
     resultado_calc = calcular_totais(ws, col_nome, col_bt, col_bs)
     validar_resultado(resultado_calc["quantidade_funcionarios"])
 
+=======
+            "saldo_fmt": formatar_horas(saldo_min)
+        })
+
+    # cálculos
+    resultado_calc = calcular_totais(ws, col_nome, col_bt, col_bs)
+
+    validar_resultado(resultado_calc["quantidade_funcionarios"])
+
+    # escreve linha TOTAL na aba principal
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
     escrever_resultado(
         ws,
         col_nome,
         col_bt,
         col_bs,
         resultado_calc["soma_bt"],
+<<<<<<< HEAD
         resultado_calc["soma_bs"],
     )
 
     criar_aba_ranking(wb, dados)
     criar_aba_resumo(wb, dados)
 
+=======
+        resultado_calc["soma_bs"]
+    )
+
+    # PASSO 4 entra aqui:
+    # criar abas extras antes de salvar
+    criar_aba_ranking(wb, dados)
+    criar_aba_resumo(wb, dados)
+
+    # salva o arquivo
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
     wb.save(caminho_saida)
 
     return {
@@ -225,5 +363,10 @@ def processar_arquivo(caminho_arquivo, caminho_saida, departamento="Todos"):
         "banco_saldo": formatar_horas(resultado_calc["soma_bs"]),
         "quantidade_funcionarios": resultado_calc["quantidade_funcionarios"],
         "tipo_entrada": os.path.splitext(caminho_arquivo)[1].lower().replace(".", "").upper(),
+<<<<<<< HEAD
         "departamento": departamento,
     }
+=======
+        "departamento": departamento
+    }
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595

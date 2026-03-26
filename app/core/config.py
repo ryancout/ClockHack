@@ -55,6 +55,10 @@ FONT_METRIC_VALUE = ("Segoe UI", 20, "bold")
 
 DEFAULT_PREFERENCES = {
     "last_open_dir": "",
+<<<<<<< HEAD
     "last_save_dir": "",
     "last_department": "Todos"
+=======
+    "last_save_dir": ""
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
 }

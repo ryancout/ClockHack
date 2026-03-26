@@ -10,7 +10,10 @@ from app.services.preferences_service import carregar_preferencias, salvar_prefe
 from app.services.workbook_pipeline_service import obter_departamentos, processar_arquivo
 from app.services.time_service import para_minutos, formatar_horas
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
 class MainController:
     def __init__(self, view):
         self.view = view
@@ -20,6 +23,7 @@ class MainController:
 
     def iniciar(self):
         self.view.renderizar_historico(ultimos_processamentos())
+<<<<<<< HEAD
         ultimo_depto = self.preferencias.get("last_department") or "Todos"
         self.view.atualizar_departamentos(["Todos"], selecionado=ultimo_depto)
         self.view.atualizar_pasta_saida(self.preferencias.get("last_save_dir") or "Nenhuma pasta selecionada ainda.")
@@ -34,17 +38,27 @@ class MainController:
         self.view.atualizar_status("Seleção limpa. Escolha um novo arquivo para continuar.", "info")
         self.view.habilitar_botao_abrir(False)
         self.view.habilitar_botao_abrir_pasta(False)
+=======
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
 
     def selecionar_arquivos(self):
         try:
             initial_dir = self.preferencias.get("last_open_dir")
+<<<<<<< HEAD
+=======
+
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
             if not initial_dir or not os.path.exists(initial_dir):
                 initial_dir = os.path.expanduser("~")
 
             caminhos = filedialog.askopenfilenames(
                 title="Selecione o(s) arquivo(s)",
                 filetypes=EXTENSOES_ACEITAS,
+<<<<<<< HEAD
                 initialdir=initial_dir,
+=======
+                initialdir=initial_dir
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
             )
 
             if not caminhos:
@@ -62,6 +76,7 @@ class MainController:
                 texto += " ..."
 
             self.view.atualizar_arquivo(texto)
+<<<<<<< HEAD
             self.view.atualizar_progresso(0)
             self.view.habilitar_botao_abrir(False)
             self.view.habilitar_botao_abrir_pasta(False)
@@ -70,12 +85,23 @@ class MainController:
                 departamentos = obter_departamentos(self.arquivos_selecionados[0])
                 selecionado = self.preferencias.get("last_department") or "Todos"
                 self.view.atualizar_departamentos(departamentos, selecionado=selecionado)
+=======
+
+            try:
+                departamentos = obter_departamentos(self.arquivos_selecionados[0])
+                self.view.atualizar_departamentos(departamentos)
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
             except Exception as e:
                 self.view.atualizar_status(f"Arquivo selecionado, mas houve erro ao ler os departamentos: {e}", "error")
                 logger.exception("Erro ao obter departamentos")
                 return
 
+<<<<<<< HEAD
             self.view.atualizar_status("Arquivos carregados. Escolha o departamento e clique em Processar.", "info")
+=======
+            self.view.atualizar_status("Arquivos carregados. Escolha o departamento e processe.", "info")
+
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
             logger.info(f"Arquivos selecionados: {self.arquivos_selecionados}")
             registrar_evento("arquivos_selecionados", {"quantidade": total})
 
@@ -90,17 +116,25 @@ class MainController:
 
         pasta_saida = filedialog.askdirectory(
             title="Selecione a pasta onde os arquivos tratados serão salvos",
+<<<<<<< HEAD
             initialdir=self.preferencias.get("last_save_dir") or self.preferencias.get("last_open_dir") or None,
+=======
+            initialdir=self.preferencias.get("last_save_dir") or self.preferencias.get("last_open_dir") or None
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
         )
         if not pasta_saida:
             self.view.atualizar_status("Operação cancelada pelo usuário.", "warning")
             return
 
         self.preferencias["last_save_dir"] = pasta_saida
+<<<<<<< HEAD
         self.preferencias["last_department"] = departamento or "Todos"
         salvar_preferencias(self.preferencias)
         self.view.atualizar_pasta_saida(pasta_saida)
         self.view.atualizar_status("Processando arquivo(s)...", "info")
+=======
+        salvar_preferencias(self.preferencias)
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
 
         total_arquivos = len(self.arquivos_selecionados)
         total_funcionarios = 0
@@ -112,7 +146,10 @@ class MainController:
 
         for idx, arquivo in enumerate(self.arquivos_selecionados, start=1):
             self.view.atualizar_progresso(idx / total_arquivos * 0.95)
+<<<<<<< HEAD
             self.view.atualizar_status(f"Processando {idx}/{total_arquivos}: {nome_curto(arquivo)}", "info")
+=======
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
             try:
                 nome_saida = sugerir_nome_saida(arquivo, departamento)
                 caminho_saida = os.path.join(pasta_saida, nome_saida)
@@ -133,6 +170,10 @@ class MainController:
                     "banco_saldo": resultado["banco_saldo"],
                     "departamento": resultado["departamento"],
                 })
+<<<<<<< HEAD
+=======
+
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
             except Exception as e:
                 ignorados += 1
                 erro_msg = f"Erro no arquivo {os.path.basename(arquivo)}: {e}"
@@ -155,6 +196,7 @@ class MainController:
         self.view.atualizar_metricas(total_funcionarios, formatar_horas(total_bt_min), formatar_horas(total_bs_min))
         self.view.atualizar_status(
             f"Processamento concluído. Processados: {processados} | Ignorados: {ignorados} | Filtro: {departamento}",
+<<<<<<< HEAD
             "success",
         )
         self.view.renderizar_historico(ultimos_processamentos())
@@ -168,6 +210,18 @@ class MainController:
                 "pasta_saida": pasta_saida,
             },
         )
+=======
+            "success"
+        )
+        self.view.renderizar_historico(ultimos_processamentos())
+
+        registrar_evento("processamento_lote", {
+            "processados": processados,
+            "ignorados": ignorados,
+            "departamento": departamento,
+            "pasta_saida": pasta_saida
+        })
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
 
         messagebox.showinfo(
             "Sucesso",
@@ -178,7 +232,11 @@ class MainController:
             f"Funcionários: {total_funcionarios}\n"
             f"Banco Total: {formatar_horas(total_bt_min)}\n"
             f"Banco Saldo: {formatar_horas(total_bs_min)}\n\n"
+<<<<<<< HEAD
             f"Pasta de saída:\n{pasta_saida}",
+=======
+            f"Pasta de saída:\n{pasta_saida}"
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
         )
 
     def abrir_arquivo_gerado(self):

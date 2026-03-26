@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import os
 import sys
 
@@ -29,15 +30,41 @@ from app.core.config import (
     WARNING,
 )
 
+=======
+import customtkinter as ctk
+from PIL import Image
+from app.controllers.main_controller import MainController
+from app.core.config import (
+    APP_GEOMETRY, APP_TITLE, BG_APP, BG_BOX, BG_CARD, BORDER, ERROR,
+    FG_MUTED, FG_TEXT, FG_TITLE, FONT_BUTTON, FONT_METRIC_TITLE,
+    FONT_METRIC_VALUE, FONT_STATUS, FONT_SUBTITLE, FONT_TITLE,
+    MIN_HEIGHT, MIN_WIDTH, PRIMARY, SUCCESS, WARNING
+)
+
+import sys
+import os
+
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
 
 def resource_path(relative_path):
     try:
         base_path = sys._MEIPASS
     except Exception:
+<<<<<<< HEAD
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
 
+=======
+        base_path = os.path.abspath('.')
+    return os.path.join(base_path, relative_path)
+
+
+ctk.set_appearance_mode('light')
+ctk.set_default_color_theme('blue')
+
+
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
 class MainWindow:
     def __init__(self):
         self.root = ctk.CTk()
@@ -73,6 +100,7 @@ class MainWindow:
         header = ctk.CTkFrame(card, fg_color='transparent')
         header.pack(fill='x', padx=24, pady=(24, 8))
 
+<<<<<<< HEAD
         logo_path = resource_path("app/assets/logo.png")
 
         if os.path.exists(logo_path):
@@ -85,6 +113,16 @@ class MainWindow:
                 self.logo_ref = logo
             except Exception as e:
                 print("Erro ao carregar logo:", e)
+=======
+        logo_path = resource_path('app/assets/logo.png')
+        if os.path.exists(logo_path):
+            try:
+                logo = ctk.CTkImage(light_image=Image.open(logo_path), size=(150, 76))
+                ctk.CTkLabel(header, image=logo, text='').pack(anchor='center')
+                self.logo_ref = logo
+            except Exception:
+                pass
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
 
         ctk.CTkLabel(card, text='Processador de Planilhas', font=FONT_TITLE, text_color=FG_TITLE).pack(pady=(4, 4))
         ctk.CTkLabel(
@@ -98,17 +136,23 @@ class MainWindow:
         actions = ctk.CTkFrame(card, fg_color='transparent')
         actions.pack(fill='x', padx=24, pady=(0, 12))
 
+<<<<<<< HEAD
         top_actions = ctk.CTkFrame(actions, fg_color='transparent')
         top_actions.pack(fill='x', pady=(0, 10))
 
         ctk.CTkButton(
             top_actions,
+=======
+        ctk.CTkButton(
+            actions,
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
             text='Selecionar arquivo(s)',
             height=42,
             fg_color=PRIMARY,
             hover_color='#0955af',
             font=FONT_BUTTON,
             command=self.controller.selecionar_arquivos,
+<<<<<<< HEAD
         ).pack(side='left', fill='x', expand=True, padx=(0, 5))
 
         ctk.CTkButton(
@@ -121,6 +165,9 @@ class MainWindow:
             font=FONT_BUTTON,
             command=self.controller.limpar_selecao,
         ).pack(side='left', fill='x', expand=True, padx=(5, 0))
+=======
+        ).pack(fill='x', pady=(0, 10))
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
 
         filtro_box = ctk.CTkFrame(actions, fg_color=BG_BOX, corner_radius=12, border_width=1, border_color=BORDER)
         filtro_box.pack(fill='x', pady=(0, 10))
@@ -175,7 +222,12 @@ class MainWindow:
         self.btn_abrir_pasta.pack(side='left', fill='x', expand=True, padx=(5, 0))
 
         box_arquivo = ctk.CTkFrame(card, fg_color=BG_BOX, corner_radius=14, border_width=1, border_color=BORDER)
+<<<<<<< HEAD
         box_arquivo.pack(fill='x', padx=24, pady=(0, 10))
+=======
+        box_arquivo.pack(fill='x', padx=24, pady=(0, 14))
+
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
         ctk.CTkLabel(box_arquivo, text='Arquivo selecionado', text_color=FG_MUTED, font=('Segoe UI', 10, 'bold')).pack(anchor='w', padx=14, pady=(12, 2))
         self.label_arquivo = ctk.CTkLabel(
             box_arquivo,
@@ -187,6 +239,7 @@ class MainWindow:
         )
         self.label_arquivo.pack(anchor='w', padx=14, pady=(0, 12))
 
+<<<<<<< HEAD
         box_saida = ctk.CTkFrame(card, fg_color=BG_BOX, corner_radius=14, border_width=1, border_color=BORDER)
         box_saida.pack(fill='x', padx=24, pady=(0, 14))
         ctk.CTkLabel(box_saida, text='Pasta de saída', text_color=FG_MUTED, font=('Segoe UI', 10, 'bold')).pack(anchor='w', padx=14, pady=(12, 2))
@@ -200,6 +253,8 @@ class MainWindow:
         )
         self.label_pasta_saida.pack(anchor='w', padx=14, pady=(0, 12))
 
+=======
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
         metricas = ctk.CTkFrame(card, fg_color='transparent')
         metricas.pack(fill='x', padx=24, pady=(0, 14))
 
@@ -236,17 +291,26 @@ class MainWindow:
         self.historico_frame = ctk.CTkScrollableFrame(card, fg_color='transparent')
         self.historico_frame.pack(fill='both', expand=True, padx=10, pady=(0, 10))
 
+<<<<<<< HEAD
     def atualizar_departamentos(self, departamentos, selecionado='Todos'):
         self.combo_departamento.configure(values=departamentos)
         valor = selecionado if selecionado in departamentos else 'Todos'
         self.combo_departamento.set(valor)
+=======
+    def atualizar_departamentos(self, departamentos):
+        self.combo_departamento.configure(values=departamentos)
+        self.combo_departamento.set('Todos')
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
 
     def atualizar_arquivo(self, texto):
         self.label_arquivo.configure(text=texto)
 
+<<<<<<< HEAD
     def atualizar_pasta_saida(self, texto):
         self.label_pasta_saida.configure(text=texto)
 
+=======
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
     def atualizar_metricas(self, funcionarios, banco_total, banco_saldo):
         self.metric_func.valor_label.configure(text=str(funcionarios))
         self.metric_bt.valor_label.configure(text=banco_total)

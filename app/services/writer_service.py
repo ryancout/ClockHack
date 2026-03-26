@@ -11,6 +11,7 @@ def obter_ultima_linha(ws, col_nome):
 
 def estilizar_linha_total(ws, nova_linha, col_inicio, col_bs):
     bold_font = Font(bold=True)
+<<<<<<< HEAD
 
     borda = Border(
         left=Side(style="thin"),
@@ -27,6 +28,25 @@ def estilizar_linha_total(ws, nova_linha, col_inicio, col_bs):
             cell.alignment = Alignment(horizontal="center", vertical="center")
 
     ws.cell(row=nova_linha, column=col_inicio).alignment = Alignment(horizontal="right", vertical="center")
+=======
+    thick_border = Border(
+        left=Side(style="medium"),
+        right=Side(style="medium"),
+        top=Side(style="medium"),
+        bottom=Side(style="medium")
+    )
+
+    for col in range(col_inicio, col_bs + 1):
+        cell = ws.cell(row=nova_linha, column=col)
+        cell.font = bold_font
+        cell.border = thick_border
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    ws.cell(
+        row=nova_linha,
+        column=col_inicio
+    ).alignment = Alignment(horizontal="right", vertical="center")
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
 
 
 def destacar_linhas_por_banco_saldo(ws, col_bs, ultima_linha_dados):
@@ -55,8 +75,16 @@ def destacar_linhas_por_banco_saldo(ws, col_bs, ultima_linha_dados):
 
         fill = None
 
+<<<<<<< HEAD
         if total_min < -480:
             fill = vermelho
+=======
+        # mais de 8 horas negativas
+        if total_min < -480:
+            fill = vermelho
+
+        # mais de 8 horas positivas
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
         elif total_min > 480:
             fill = amarelo
 
@@ -68,6 +96,10 @@ def destacar_linhas_por_banco_saldo(ws, col_bs, ultima_linha_dados):
 def escrever_resultado(ws, col_nome, col_bt, col_bs, soma_bt, soma_bs):
     ultima_linha = obter_ultima_linha(ws, col_nome)
 
+<<<<<<< HEAD
+=======
+    # destaca as linhas dos funcionários antes de inserir a linha TOTAL
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595
     destacar_linhas_por_banco_saldo(ws, col_bs, ultima_linha)
 
     nova_linha = ultima_linha + 1
@@ -84,4 +116,8 @@ def escrever_resultado(ws, col_nome, col_bt, col_bs, soma_bt, soma_bs):
     )
 
     ws.cell(row=nova_linha, column=col_inicio, value="TOTAL")
+<<<<<<< HEAD
     estilizar_linha_total(ws, nova_linha, col_inicio, col_bs)
+=======
+    estilizar_linha_total(ws, nova_linha, col_inicio, col_bs)
+>>>>>>> b23b4f0fc185652037e9b32f404393c6f1acc595

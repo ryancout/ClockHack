@@ -1,0 +1,132 @@
+[
+  {
+    "arquivo_origem": "C:/Users/Ryan.Soares.NOVOCEPPP/Downloads/EXTRATO - NUCLEO 16-02 à 15-03-2026.xlsx",
+    "arquivo_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Documents\\EXTRATO - NUCLEO 16-02 à 15-03-2026_todos_tratado.xlsx",
+    "tipo_entrada": "XLSX",
+    "quantidade_funcionarios": 49,
+    "banco_total": "29:43",
+    "banco_saldo": "271:06",
+    "departamento": "Todos",
+    "data_execucao": "25/03/2026 16:16:06"
+  },
+  {
+    "arquivo_origem": "C:/Users/Ryan.Soares.NOVOCEPPP/Downloads/EXTRATO - NUCLEO 16-02 à 15-03-2026.xlsx",
+    "arquivo_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Documents\\EXTRATO - NUCLEO 16-02 à 15-03-2026_todos_tratado.xlsx",
+    "tipo_entrada": "XLSX",
+    "quantidade_funcionarios": 49,
+    "banco_total": "29:43",
+    "banco_saldo": "271:06",
+    "departamento": "Todos",
+    "data_execucao": "25/03/2026 16:13:44"
+  },
+  {
+    "arquivo_origem": "C:/Users/Ryan.Soares.NOVOCEPPP/Downloads/EXTRATO - NUCLEO 16-02 à 15-03-2026.xlsx",
+    "arquivo_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Documents\\EXTRATO - NUCLEO 16-02 à 15-03-2026_todos_tratado.xlsx",
+    "tipo_entrada": "XLSX",
+    "quantidade_funcionarios": 49,
+    "banco_total": "29:43",
+    "banco_saldo": "271:06",
+    "departamento": "Todos",
+    "data_execucao": "25/03/2026 15:56:53"
+  },
+  {
+    "arquivo_origem": "C:/Users/Ryan.Soares.NOVOCEPPP/Downloads/EXTRATO - NUCLEO 16-02 à 15-03-2026.xlsx",
+    "arquivo_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Pictures\\EXTRATO - NUCLEO 16-02 à 15-03-2026_todos_tratado.xlsx",
+    "tipo_entrada": "XLSX",
+    "quantidade_funcionarios": 49,
+    "banco_total": "29:43",
+    "banco_saldo": "271:06",
+    "departamento": "Todos",
+    "data_execucao": "25/03/2026 15:53:52"
+  },
+  {
+    "arquivo_origem": "C:/Users/Ryan.Soares.NOVOCEPPP/Downloads/EXTRATO - NUCLEO 16-02 à 15-03-2026.xlsx",
+    "arquivo_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Documents\\EXTRATO - NUCLEO 16-02 à 15-03-2026_todos_tratado.xlsx",
+    "tipo_entrada": "XLSX",
+    "quantidade_funcionarios": 49,
+    "banco_total": "29:43",
+    "banco_saldo": "271:06",
+    "departamento": "Todos",
+    "data_execucao": "25/03/2026 15:53:00"
+  },
+  {
+    "arquivo_origem": "C:/Users/Ryan.Soares.NOVOCEPPP/Downloads/EXTRATO - NUCLEO 16-02 à 15-03-2026.xlsx",
+    "arquivo_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Desktop\\EXTRATO - NUCLEO 16-02 à 15-03-2026_todos_tratado.xlsx",
+    "tipo_entrada": "XLSX",
+    "quantidade_funcionarios": 49,
+    "banco_total": "29:43",
+    "banco_saldo": "271:06",
+    "departamento": "Todos",
+    "data_execucao": "25/03/2026 15:41:04"
+  },
+  {
+    "arquivo_origem": "C:/Users/Ryan.Soares.NOVOCEPPP/Downloads/EXTRATO - NUCLEO 16-02 à 15-03-2026.xlsx",
+    "arquivo_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Documents\\EXTRATO - NUCLEO 16-02 à 15-03-2026_todos_tratado.xlsx",
+    "tipo_entrada": "XLSX",
+    "quantidade_funcionarios": 49,
+    "banco_total": "29:43",
+    "banco_saldo": "271:06",
+    "departamento": "Todos",
+    "data_execucao": "25/03/2026 15:33:13"
+  },
+  {
+    "arquivo_origem": "C:/Users/Ryan.Soares.NOVOCEPPP/Downloads/EXTRATO - NUCLEO 16-02 à 15-03-2026.xlsx",
+    "arquivo_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Documents\\EXTRATO - NUCLEO 16-02 à 15-03-2026_todos_tratado.xlsx",
+    "tipo_entrada": "XLSX",
+    "quantidade_funcionarios": 49,
+    "banco_total": "29:43",
+    "banco_saldo": "271:06",
+    "departamento": "Todos",
+    "data_execucao": "25/03/2026 15:32:44"
+  },
+  {
+    "arquivo_origem": "C:/Users/Ryan.Soares.NOVOCEPPP/Downloads/EXTRATO - NUCLEO 16-02 à 15-03-2026.xlsx",
+    "arquivo_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Pictures\\EXTRATO - NUCLEO 16-02 à 15-03-2026_TECNOLOGIA_DA_INFORMAÇÃO_tratado.xlsx",
+    "tipo_entrada": "XLSX",
+    "quantidade_funcionarios": 3,
+    "banco_total": "-4:08",
+    "banco_saldo": "34:34",
+    "departamento": "TECNOLOGIA DA INFORMAÇÃO",
+    "data_execucao": "25/03/2026 15:32:24"
+  },
+  {
+    "arquivo_origem": "C:/Users/Ryan.Soares.NOVOCEPPP/Downloads/EXTRATO - NUCLEO 16-02 à 15-03-2026.xlsx",
+    "arquivo_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Documents\\EXTRATO - NUCLEO 16-02 à 15-03-2026_TECNOLOGIA_DA_INFORMAÇÃO_tratado.xlsx",
+    "tipo_entrada": "XLSX",
+    "quantidade_funcionarios": 3,
+    "banco_total": "-4:08",
+    "banco_saldo": "34:34",
+    "departamento": "TECNOLOGIA DA INFORMAÇÃO",
+    "data_execucao": "25/03/2026 14:51:53"
+  },
+  {
+    "arquivo_origem": "C:/Users/Ryan.Soares.NOVOCEPPP/Downloads/EXTRATO - NUCLEO 16-02 à 15-03-2026.xlsx",
+    "arquivo_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Desktop\\EXTRATO - NUCLEO 16-02 à 15-03-2026_TECNOLOGIA_DA_INFORMAÇÃO_tratado.xlsx",
+    "tipo_entrada": "XLSX",
+    "quantidade_funcionarios": 3,
+    "banco_total": "-4:08",
+    "banco_saldo": "34:34",
+    "departamento": "TECNOLOGIA DA INFORMAÇÃO",
+    "data_execucao": "25/03/2026 14:40:26"
+  },
+  {
+    "arquivo_origem": "C:/Users/Ryan.Soares.NOVOCEPPP/Downloads/EXTRATO - NUCLEO 16-02 à 15-03-2026.xlsx",
+    "arquivo_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Desktop\\EXTRATO - NUCLEO 16-02 à 15-03-2026_todos_tratado.xlsx",
+    "tipo_entrada": "XLSX",
+    "quantidade_funcionarios": 49,
+    "banco_total": "29:43",
+    "banco_saldo": "271:06",
+    "departamento": "Todos",
+    "data_execucao": "25/03/2026 14:36:36"
+  },
+  {
+    "arquivo_origem": "C:/Users/Ryan.Soares.NOVOCEPPP/Downloads/EXTRATO - NUCLEO 16-02 à 15-03-2026.xlsx",
+    "arquivo_saida": "C:/Users/Ryan.Soares.NOVOCEPPP/Desktop\\EXTRATO - NUCLEO 16-02 à 15-03-2026_JURIDICO_tratado.xlsx",
+    "tipo_entrada": "XLSX",
+    "quantidade_funcionarios": 1,
+    "banco_total": "2:01",
+    "banco_saldo": "-10:31",
+    "departamento": "JURIDICO",
+    "data_execucao": "25/03/2026 14:36:03"
+  }
+]
