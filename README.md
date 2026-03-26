@@ -2,6 +2,7 @@
 Advanced workforce time analyzer that processes Excel/CSV files, calculates balances, highlights anomalies, and generates automated insights like rankings and department analytics.
 
 ## TimeForge is a desktop application designed to transform raw workforce time data into actionable insights.
+
 It processes Excel and CSV files exported from time tracking systems, automatically calculates time balances, highlights critical situations (such as excessive overtime or negative balances), and generates structured outputs ready for analysis and reporting.
 
 Key features include:
