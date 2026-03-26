@@ -13,3 +13,4 @@ uploads/
 data/history.json
 data/audit.json
 data/preferences.json
+*.exe
