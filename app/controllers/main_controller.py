@@ -21,32 +21,50 @@ class MainController:
         self.view.renderizar_historico(ultimos_processamentos())
 
     def selecionar_arquivos(self):
-        initial_dir = self.preferencias.get("last_open_dir") or None
-        caminhos = filedialog.askopenfilenames(
-            title="Selecione o(s) arquivo(s)",
-            filetypes=EXTENSOES_ACEITAS,
-            initialdir=initial_dir
-        )
-        if not caminhos:
-            return
+        try:
+            initial_dir = self.preferencias.get("last_open_dir")
 
-        self.arquivos_selecionados = list(caminhos)
-        self.preferencias["last_open_dir"] = os.path.dirname(self.arquivos_selecionados[0])
-        salvar_preferencias(self.preferencias)
+            if not initial_dir or not os.path.exists(initial_dir):
+                initial_dir = os.path.expanduser("~")
 
-        total = len(self.arquivos_selecionados)
-        nomes = [nome_curto(x) for x in self.arquivos_selecionados[:3]]
-        texto = f"{total} arquivo(s) selecionado(s): " + ", ".join(nomes)
-        if total > 3:
-            texto += " ..."
+            caminhos = filedialog.askopenfilenames(
+                title="Selecione o(s) arquivo(s)",
+                filetypes=EXTENSOES_ACEITAS,
+                initialdir=initial_dir
+            )
 
-        self.view.atualizar_arquivo(texto)
-        departamentos = obter_departamentos(self.arquivos_selecionados[0])
-        self.view.atualizar_departamentos(departamentos)
-        self.view.atualizar_status("Arquivos carregados. Escolha o departamento e processe.", "info")
+            if not caminhos:
+                self.view.atualizar_status("Nenhum arquivo selecionado.", "warning")
+                return
 
-        logger.info(f"Arquivos selecionados: {self.arquivos_selecionados}")
-        registrar_evento("arquivos_selecionados", {"quantidade": total})
+            self.arquivos_selecionados = list(caminhos)
+            self.preferencias["last_open_dir"] = os.path.dirname(self.arquivos_selecionados[0])
+            salvar_preferencias(self.preferencias)
+
+            total = len(self.arquivos_selecionados)
+            nomes = [nome_curto(x) for x in self.arquivos_selecionados[:3]]
+            texto = f"{total} arquivo(s) selecionado(s): " + ", ".join(nomes)
+            if total > 3:
+                texto += " ..."
+
+            self.view.atualizar_arquivo(texto)
+
+            try:
+                departamentos = obter_departamentos(self.arquivos_selecionados[0])
+                self.view.atualizar_departamentos(departamentos)
+            except Exception as e:
+                self.view.atualizar_status(f"Arquivo selecionado, mas houve erro ao ler os departamentos: {e}", "error")
+                logger.exception("Erro ao obter departamentos")
+                return
+
+            self.view.atualizar_status("Arquivos carregados. Escolha o departamento e processe.", "info")
+
+            logger.info(f"Arquivos selecionados: {self.arquivos_selecionados}")
+            registrar_evento("arquivos_selecionados", {"quantidade": total})
+
+        except Exception as e:
+            self.view.atualizar_status(f"Erro ao selecionar arquivos: {e}", "error")
+            logger.exception("Erro em selecionar_arquivos")
 
     def processar(self, departamento):
         if not self.arquivos_selecionados:
@@ -94,10 +112,15 @@ class MainController:
                     "banco_saldo": resultado["banco_saldo"],
                     "departamento": resultado["departamento"],
                 })
+
             except Exception as e:
                 ignorados += 1
-                logger.error(f"Erro no arquivo {arquivo}: {e}")
+                erro_msg = f"Erro no arquivo {os.path.basename(arquivo)}: {e}"
+                logger.exception(erro_msg)
                 registrar_evento("arquivo_ignorado", {"arquivo": arquivo, "erro": str(e)})
+                self.view.atualizar_status(erro_msg, "error")
+                messagebox.showerror("Erro no processamento", erro_msg)
+                return
 
         self.view.atualizar_progresso(1.0)
 
@@ -110,7 +133,10 @@ class MainController:
         self.view.habilitar_botao_abrir(True)
         self.view.habilitar_botao_abrir_pasta(True)
         self.view.atualizar_metricas(total_funcionarios, formatar_horas(total_bt_min), formatar_horas(total_bs_min))
-        self.view.atualizar_status(f"Processamento concluído. Processados: {processados} | Ignorados: {ignorados} | Filtro: {departamento}", "success")
+        self.view.atualizar_status(
+            f"Processamento concluído. Processados: {processados} | Ignorados: {ignorados} | Filtro: {departamento}",
+            "success"
+        )
         self.view.renderizar_historico(ultimos_processamentos())
 
         registrar_evento("processamento_lote", {

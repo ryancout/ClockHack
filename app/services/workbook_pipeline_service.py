@@ -10,13 +10,30 @@ from app.services.time_service import formatar_horas, para_minutos
 
 
 def obter_departamentos(caminho_arquivo):
-    wb = carregar_workbook(caminho_arquivo)
-    ws = wb.active
+    try:
+        wb = carregar_workbook(caminho_arquivo)
+    except Exception as e:
+        raise Exception(f"Erro ao abrir a planilha: {e}")
 
-    colunas = mapear_colunas(ws)
-    validar_colunas(colunas)
+    try:
+        ws = wb.active
+    except Exception as e:
+        raise Exception(f"Erro ao acessar a aba ativa: {e}")
 
-    return listar_departamentos(ws, colunas["Nome do departamento"])
+    try:
+        colunas = mapear_colunas(ws)
+    except Exception as e:
+        raise Exception(f"Erro ao mapear colunas: {e}")
+
+    try:
+        validar_colunas(colunas)
+    except Exception as e:
+        raise Exception(f"Erro na validação das colunas: {e}")
+
+    try:
+        return listar_departamentos(ws, colunas["nome do departamento"])
+    except Exception as e:
+        raise Exception(f"Erro ao listar departamentos: {e}")
 
 
 def criar_aba_ranking(wb, dados):
@@ -127,10 +144,10 @@ def processar_arquivo(caminho_arquivo, caminho_saida, departamento="Todos"):
     colunas = mapear_colunas(ws)
     validar_colunas(colunas)
 
-    col_nome = colunas["Nome do funcionário"]
-    col_depart = colunas["Nome do departamento"]
-    col_bt = colunas["Banco Total"]
-    col_bs = colunas["Banco Saldo"]
+    col_nome = colunas["nome do funcionário"]
+    col_depart = colunas["nome do departamento"]
+    col_bt = colunas["banco total"]
+    col_bs = colunas["banco saldo"]
 
     # aplica filtro por departamento antes de processar
     aplicar_filtro_departamento(ws, col_depart, departamento)

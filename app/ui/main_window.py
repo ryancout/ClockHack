@@ -5,11 +5,24 @@ from app.core.config import (
     APP_GEOMETRY, APP_TITLE, BG_APP, BG_BOX, BG_CARD, BORDER, ERROR,
     FG_MUTED, FG_TEXT, FG_TITLE, FONT_BUTTON, FONT_METRIC_TITLE,
     FONT_METRIC_VALUE, FONT_STATUS, FONT_SUBTITLE, FONT_TITLE,
-    LOGO_PATH, MIN_HEIGHT, MIN_WIDTH, PRIMARY, SUCCESS, WARNING
+    MIN_HEIGHT, MIN_WIDTH, PRIMARY, SUCCESS, WARNING
 )
 
-ctk.set_appearance_mode("light")
-ctk.set_default_color_theme("blue")
+import sys
+import os
+
+
+def resource_path(relative_path):
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath('.')
+    return os.path.join(base_path, relative_path)
+
+
+ctk.set_appearance_mode('light')
+ctk.set_default_color_theme('blue')
+
 
 class MainWindow:
     def __init__(self):
@@ -27,13 +40,13 @@ class MainWindow:
 
     def _montar_layout(self):
         container = ctk.CTkFrame(self.root, fg_color=BG_APP, corner_radius=0)
-        container.pack(fill="both", expand=True, padx=18, pady=18)
+        container.pack(fill='both', expand=True, padx=18, pady=18)
 
         esquerdo = ctk.CTkFrame(container, fg_color=BG_APP, corner_radius=0)
-        esquerdo.pack(side="left", fill="both", expand=True, padx=(0, 10))
+        esquerdo.pack(side='left', fill='both', expand=True, padx=(0, 10))
 
         direito = ctk.CTkFrame(container, fg_color=BG_APP, corner_radius=0, width=300)
-        direito.pack(side="right", fill="y")
+        direito.pack(side='right', fill='y')
         direito.pack_propagate(False)
 
         self._montar_card_principal(esquerdo)
@@ -41,69 +54,125 @@ class MainWindow:
 
     def _montar_card_principal(self, parent):
         card = ctk.CTkFrame(parent, fg_color=BG_CARD, corner_radius=20, border_width=1, border_color=BORDER)
-        card.pack(fill="both", expand=True)
+        card.pack(fill='both', expand=True)
 
-        header = ctk.CTkFrame(card, fg_color="transparent")
-        header.pack(fill="x", padx=24, pady=(24, 8))
+        header = ctk.CTkFrame(card, fg_color='transparent')
+        header.pack(fill='x', padx=24, pady=(24, 8))
 
-        if LOGO_PATH.exists():
+        logo_path = resource_path('app/assets/logo.png')
+        if os.path.exists(logo_path):
             try:
-                logo = ctk.CTkImage(light_image=Image.open(LOGO_PATH), size=(150, 76))
-                ctk.CTkLabel(header, image=logo, text="").pack(anchor="center")
+                logo = ctk.CTkImage(light_image=Image.open(logo_path), size=(150, 76))
+                ctk.CTkLabel(header, image=logo, text='').pack(anchor='center')
                 self.logo_ref = logo
             except Exception:
                 pass
 
-        ctk.CTkLabel(card, text="Processador de Planilhas", font=FONT_TITLE, text_color=FG_TITLE).pack(pady=(4, 4))
-        ctk.CTkLabel(card, text="Selecione arquivo(s), escolha o departamento, processe e salve a saída em Excel.", font=FONT_SUBTITLE, text_color=FG_MUTED, wraplength=680).pack(pady=(0, 14))
+        ctk.CTkLabel(card, text='Processador de Planilhas', font=FONT_TITLE, text_color=FG_TITLE).pack(pady=(4, 4))
+        ctk.CTkLabel(
+            card,
+            text='Selecione arquivo(s), escolha o departamento, processe e salve a saída em Excel.',
+            font=FONT_SUBTITLE,
+            text_color=FG_MUTED,
+            wraplength=680,
+        ).pack(pady=(0, 14))
 
-        actions = ctk.CTkFrame(card, fg_color="transparent")
-        actions.pack(fill="x", padx=24, pady=(0, 12))
+        actions = ctk.CTkFrame(card, fg_color='transparent')
+        actions.pack(fill='x', padx=24, pady=(0, 12))
 
-        ctk.CTkButton(actions, text="Selecionar arquivo(s)", height=42, fg_color=PRIMARY, hover_color="#0955af", font=FONT_BUTTON, command=self.controller.selecionar_arquivos).pack(fill="x", pady=(0, 10))
+        ctk.CTkButton(
+            actions,
+            text='Selecionar arquivo(s)',
+            height=42,
+            fg_color=PRIMARY,
+            hover_color='#0955af',
+            font=FONT_BUTTON,
+            command=self.controller.selecionar_arquivos,
+        ).pack(fill='x', pady=(0, 10))
 
         filtro_box = ctk.CTkFrame(actions, fg_color=BG_BOX, corner_radius=12, border_width=1, border_color=BORDER)
-        filtro_box.pack(fill="x", pady=(0, 10))
-        ctk.CTkLabel(filtro_box, text="Filtro por Nome do departamento", text_color=FG_MUTED, font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=14, pady=(10, 4))
-        self.combo_departamento = ctk.CTkComboBox(filtro_box, values=["Todos"], height=36)
-        self.combo_departamento.pack(fill="x", padx=14, pady=(0, 12))
-        self.combo_departamento.set("Todos")
+        filtro_box.pack(fill='x', pady=(0, 10))
+        ctk.CTkLabel(
+            filtro_box,
+            text='Filtro por Nome do departamento',
+            text_color=FG_MUTED,
+            font=('Segoe UI', 10, 'bold'),
+        ).pack(anchor='w', padx=14, pady=(10, 4))
 
-        ctk.CTkButton(actions, text="Processar arquivo(s)", height=42, fg_color=SUCCESS, hover_color="#0d634d", font=FONT_BUTTON, command=self._processar_clicado).pack(fill="x", pady=(0, 10))
+        self.combo_departamento = ctk.CTkComboBox(filtro_box, values=['Todos'], height=36)
+        self.combo_departamento.pack(fill='x', padx=14, pady=(0, 12))
+        self.combo_departamento.set('Todos')
 
-        sec = ctk.CTkFrame(actions, fg_color="transparent")
-        sec.pack(fill="x")
+        ctk.CTkButton(
+            actions,
+            text='Processar arquivo(s)',
+            height=42,
+            fg_color=SUCCESS,
+            hover_color='#0d634d',
+            font=FONT_BUTTON,
+            command=self._processar_clicado,
+        ).pack(fill='x', pady=(0, 10))
 
-        self.btn_abrir = ctk.CTkButton(sec, text="Abrir arquivo", height=38, fg_color="#e9eef5", text_color=FG_TEXT, hover_color="#dde6f1", font=FONT_BUTTON, command=self.controller.abrir_arquivo_gerado, state="disabled")
-        self.btn_abrir.pack(side="left", fill="x", expand=True, padx=(0, 5))
+        sec = ctk.CTkFrame(actions, fg_color='transparent')
+        sec.pack(fill='x')
 
-        self.btn_abrir_pasta = ctk.CTkButton(sec, text="Abrir pasta", height=38, fg_color="#e9eef5", text_color=FG_TEXT, hover_color="#dde6f1", font=FONT_BUTTON, command=self.controller.abrir_pasta_gerada, state="disabled")
-        self.btn_abrir_pasta.pack(side="left", fill="x", expand=True, padx=(5, 0))
+        self.btn_abrir = ctk.CTkButton(
+            sec,
+            text='Abrir arquivo',
+            height=38,
+            fg_color='#e9eef5',
+            text_color=FG_TEXT,
+            hover_color='#dde6f1',
+            font=FONT_BUTTON,
+            command=self.controller.abrir_arquivo_gerado,
+            state='disabled',
+        )
+        self.btn_abrir.pack(side='left', fill='x', expand=True, padx=(0, 5))
+
+        self.btn_abrir_pasta = ctk.CTkButton(
+            sec,
+            text='Abrir pasta',
+            height=38,
+            fg_color='#e9eef5',
+            text_color=FG_TEXT,
+            hover_color='#dde6f1',
+            font=FONT_BUTTON,
+            command=self.controller.abrir_pasta_gerada,
+            state='disabled',
+        )
+        self.btn_abrir_pasta.pack(side='left', fill='x', expand=True, padx=(5, 0))
 
         box_arquivo = ctk.CTkFrame(card, fg_color=BG_BOX, corner_radius=14, border_width=1, border_color=BORDER)
-        box_arquivo.pack(fill="x", padx=24, pady=(0, 14))
+        box_arquivo.pack(fill='x', padx=24, pady=(0, 14))
 
-        ctk.CTkLabel(box_arquivo, text="Arquivo selecionado", text_color=FG_MUTED, font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=14, pady=(12, 2))
-        self.label_arquivo = ctk.CTkLabel(box_arquivo, text="Nenhum arquivo selecionado", text_color=FG_TEXT, font=("Segoe UI", 12), wraplength=720, justify="left")
-        self.label_arquivo.pack(anchor="w", padx=14, pady=(0, 12))
+        ctk.CTkLabel(box_arquivo, text='Arquivo selecionado', text_color=FG_MUTED, font=('Segoe UI', 10, 'bold')).pack(anchor='w', padx=14, pady=(12, 2))
+        self.label_arquivo = ctk.CTkLabel(
+            box_arquivo,
+            text='Nenhum arquivo selecionado',
+            text_color=FG_TEXT,
+            font=('Segoe UI', 12),
+            wraplength=720,
+            justify='left',
+        )
+        self.label_arquivo.pack(anchor='w', padx=14, pady=(0, 12))
 
-        metricas = ctk.CTkFrame(card, fg_color="transparent")
-        metricas.pack(fill="x", padx=24, pady=(0, 14))
+        metricas = ctk.CTkFrame(card, fg_color='transparent')
+        metricas.pack(fill='x', padx=24, pady=(0, 14))
 
-        self.metric_func = self._criar_box_metrica(metricas, "Funcionários", "0")
-        self.metric_bt = self._criar_box_metrica(metricas, "Banco Total", "--:--")
-        self.metric_bs = self._criar_box_metrica(metricas, "Banco Saldo", "--:--")
+        self.metric_func = self._criar_box_metrica(metricas, 'Funcionários', '0')
+        self.metric_bt = self._criar_box_metrica(metricas, 'Banco Total', '--:--')
+        self.metric_bs = self._criar_box_metrica(metricas, 'Banco Saldo', '--:--')
 
-        self.metric_func.pack(side="left", fill="both", expand=True, padx=(0, 6))
-        self.metric_bt.pack(side="left", fill="both", expand=True, padx=6)
-        self.metric_bs.pack(side="left", fill="both", expand=True, padx=(6, 0))
+        self.metric_func.pack(side='left', fill='both', expand=True, padx=(0, 6))
+        self.metric_bt.pack(side='left', fill='both', expand=True, padx=6)
+        self.metric_bs.pack(side='left', fill='both', expand=True, padx=(6, 0))
 
         self.progress = ctk.CTkProgressBar(card, height=10)
-        self.progress.pack(fill="x", padx=24, pady=(0, 10))
+        self.progress.pack(fill='x', padx=24, pady=(0, 10))
         self.progress.set(0)
 
-        self.label_status = ctk.CTkLabel(card, text="Aguardando arquivo.", text_color=FG_MUTED, font=FONT_STATUS, wraplength=720)
-        self.label_status.pack(fill="x", padx=24, pady=(0, 18))
+        self.label_status = ctk.CTkLabel(card, text='Aguardando arquivo.', text_color=FG_MUTED, font=FONT_STATUS, wraplength=720)
+        self.label_status.pack(fill='x', padx=24, pady=(0, 18))
 
     def _processar_clicado(self):
         self.controller.processar(self.combo_departamento.get())
@@ -118,14 +187,14 @@ class MainWindow:
 
     def _montar_lateral(self, parent):
         card = ctk.CTkFrame(parent, fg_color=BG_CARD, corner_radius=20, border_width=1, border_color=BORDER)
-        card.pack(fill="both", expand=True)
-        ctk.CTkLabel(card, text="Últimos processamentos", text_color=FG_TITLE, font=("Segoe UI", 14, "bold")).pack(anchor="w", padx=14, pady=(14, 10))
-        self.historico_frame = ctk.CTkScrollableFrame(card, fg_color="transparent")
-        self.historico_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        card.pack(fill='both', expand=True)
+        ctk.CTkLabel(card, text='Últimos processamentos', text_color=FG_TITLE, font=('Segoe UI', 14, 'bold')).pack(anchor='w', padx=14, pady=(14, 10))
+        self.historico_frame = ctk.CTkScrollableFrame(card, fg_color='transparent')
+        self.historico_frame.pack(fill='both', expand=True, padx=10, pady=(0, 10))
 
     def atualizar_departamentos(self, departamentos):
         self.combo_departamento.configure(values=departamentos)
-        self.combo_departamento.set("Todos")
+        self.combo_departamento.set('Todos')
 
     def atualizar_arquivo(self, texto):
         self.label_arquivo.configure(text=texto)
@@ -135,13 +204,13 @@ class MainWindow:
         self.metric_bt.valor_label.configure(text=banco_total)
         self.metric_bs.valor_label.configure(text=banco_saldo)
 
-    def atualizar_status(self, texto, tipo="info"):
+    def atualizar_status(self, texto, tipo='info'):
         cor = PRIMARY
-        if tipo == "success":
+        if tipo == 'success':
             cor = SUCCESS
-        elif tipo == "warning":
+        elif tipo == 'warning':
             cor = WARNING
-        elif tipo == "error":
+        elif tipo == 'error':
             cor = ERROR
         self.label_status.configure(text=texto, text_color=cor)
 
@@ -149,29 +218,30 @@ class MainWindow:
         self.progress.set(valor)
 
     def habilitar_botao_abrir(self, habilitar):
-        self.btn_abrir.configure(state="normal" if habilitar else "disabled")
+        self.btn_abrir.configure(state='normal' if habilitar else 'disabled')
 
     def habilitar_botao_abrir_pasta(self, habilitar):
-        self.btn_abrir_pasta.configure(state="normal" if habilitar else "disabled")
+        self.btn_abrir_pasta.configure(state='normal' if habilitar else 'disabled')
 
     def renderizar_historico(self, itens):
         for widget in self.historico_frame.winfo_children():
             widget.destroy()
 
         if not itens:
-            ctk.CTkLabel(self.historico_frame, text="Nenhum processamento registrado.", text_color=FG_MUTED, font=("Segoe UI", 11)).pack(anchor="w", padx=6, pady=6)
+            ctk.CTkLabel(self.historico_frame, text='Nenhum processamento registrado.', text_color=FG_MUTED, font=('Segoe UI', 11)).pack(anchor='w', padx=6, pady=6)
             return
 
         for item in itens:
             box = ctk.CTkFrame(self.historico_frame, fg_color=BG_BOX, corner_radius=12, border_width=1, border_color=BORDER)
-            box.pack(fill="x", padx=4, pady=4)
-            ctk.CTkLabel(box, text=item.get("data_execucao", ""), text_color=FG_MUTED, font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=10, pady=(10, 2))
-            ctk.CTkLabel(box, text=f"Departamento: {item.get('departamento', 'Todos')}", text_color=FG_TEXT, font=("Segoe UI", 10)).pack(anchor="w", padx=10)
-            ctk.CTkLabel(box, text=f"Funcionários: {item.get('quantidade_funcionarios', 0)}", text_color=FG_TEXT, font=("Segoe UI", 10)).pack(anchor="w", padx=10)
-            ctk.CTkLabel(box, text=f"BT: {item.get('banco_total', '--:--')} | BS: {item.get('banco_saldo', '--:--')}", text_color=FG_TEXT, font=("Segoe UI", 10)).pack(anchor="w", padx=10, pady=(0, 10))
+            box.pack(fill='x', padx=4, pady=4)
+            ctk.CTkLabel(box, text=item.get('data_execucao', ''), text_color=FG_MUTED, font=('Segoe UI', 9, 'bold')).pack(anchor='w', padx=10, pady=(10, 2))
+            ctk.CTkLabel(box, text=f"Departamento: {item.get('departamento', 'Todos')}", text_color=FG_TEXT, font=('Segoe UI', 10)).pack(anchor='w', padx=10)
+            ctk.CTkLabel(box, text=f"Funcionários: {item.get('quantidade_funcionarios', 0)}", text_color=FG_TEXT, font=('Segoe UI', 10)).pack(anchor='w', padx=10)
+            ctk.CTkLabel(box, text=f"BT: {item.get('banco_total', '--:--')} | BS: {item.get('banco_saldo', '--:--')}", text_color=FG_TEXT, font=('Segoe UI', 10)).pack(anchor='w', padx=10, pady=(0, 10))
 
     def run(self):
         self.root.mainloop()
+
 
 def iniciar_app():
     app = MainWindow()
