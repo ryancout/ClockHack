@@ -25,58 +25,83 @@ echo ================================
 echo.
 
 echo [1/7] Atualizando version.py...
-powershell -Command "(Get-Content 'app/core/version.py') -replace 'APP_VERSION = \".*\"', 'APP_VERSION = \"%VERSION%\"' | Set-Content 'app/core/version.py'"
+echo APP_NAME = "Processador de Planilhas FAS" > app\core\version.py
+echo APP_VERSION = "%VERSION%" >> app\core\version.py
+if errorlevel 1 (
+    echo ERRO ao atualizar app/core/version.py
+    pause
+    exit /b 1
+)
 
 echo [2/7] Atualizando version_info.txt...
-powershell -Command ^
-"$v='%VERSION%'.Split('.');" ^
-"$content = @'
-VSVersionInfo(
-  ffi=FixedFileInfo(
-    filevers=({0},{1},{2},0),
-    prodvers=({0},{1},{2},0),
-    mask=0x3f,
-    flags=0x0,
-    OS=0x40004,
-    fileType=0x1,
-    subtype=0x0,
-    date=(0, 0)
-  ),
-  kids=[
-    StringFileInfo([
-      StringTable(
-        '040904B0',
-        [
-          StringStruct('CompanyName', 'FAS'),
-          StringStruct('FileDescription', 'Processador de Planilhas de Horas'),
-          StringStruct('FileVersion', '{3}'),
-          StringStruct('InternalName', 'ProcessadorPlanilhasFAS'),
-          StringStruct('OriginalFilename', 'ProcessadorPlanilhasFAS.exe'),
-          StringStruct('ProductName', 'Processador Planilhas FAS'),
-          StringStruct('ProductVersion', '{3}')
-        ]
-      )
-    ]),
-    VarFileInfo([VarStruct('Translation', [1033, 1200])])
-  ]
+(
+echo VSVersionInfo(
+echo   ffi=FixedFileInfo(
+echo     filevers=(%VERSION:.=,%,0),
+echo     prodvers=(%VERSION:.=,%,0),
+echo     mask=0x3f,
+echo     flags=0x0,
+echo     OS=0x40004,
+echo     fileType=0x1,
+echo     subtype=0x0,
+echo     date=(0, 0)
+echo   ),
+echo   kids=[
+echo     StringFileInfo([
+echo       StringTable(
+echo         '040904B0',
+echo         [
+echo           StringStruct('CompanyName', 'FAS'),
+echo           StringStruct('FileDescription', 'Processador de Planilhas de Horas'),
+echo           StringStruct('FileVersion', '%VERSION%'),
+echo           StringStruct('InternalName', 'ProcessadorPlanilhasFAS'),
+echo           StringStruct('OriginalFilename', 'ProcessadorPlanilhasFAS.exe'),
+echo           StringStruct('ProductName', 'Processador Planilhas FAS'),
+echo           StringStruct('ProductVersion', '%VERSION%')
+echo         ]
+echo       )
+echo     ]),
+echo     VarFileInfo([VarStruct('Translation', [1033, 1200])])
+echo   ]
+echo )
+) > version_info.txt
+
+if errorlevel 1 (
+    echo ERRO ao atualizar version_info.txt
+    pause
+    exit /b 1
 )
-'@ -f $v[0],$v[1],$v[2],'%VERSION%';" ^
-"Set-Content 'version_info.txt' $content"
 
 echo [3/7] Limpando build...
 if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
+if exist "%ZIP_NAME%" del /f /q "%ZIP_NAME%"
 
 echo [4/7] Gerando EXE...
 pyinstaller main.spec
+if errorlevel 1 (
+    echo ERRO ao gerar o EXE.
+    pause
+    exit /b 1
+)
 
 echo [5/7] Criando ZIP...
-powershell -Command "Compress-Archive -Path 'dist\%APP_NAME%.exe' -DestinationPath '%ZIP_NAME%' -Force"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path 'dist\%APP_NAME%.exe' -DestinationPath '%ZIP_NAME%' -Force"
+if errorlevel 1 (
+    echo ERRO ao criar o ZIP.
+    pause
+    exit /b 1
+)
 
 echo [6/7] Git commit/push...
 git add .
 git commit -m "%COMMIT_MSG%"
 git push origin main
+if errorlevel 1 (
+    echo ERRO no push para o GitHub.
+    pause
+    exit /b 1
+)
 
 echo.
 echo Finalizado!
