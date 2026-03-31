@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-setlocal EnableDelayedExpansion
+setlocal
 
 cd /d "%~dp0\.."
 
@@ -15,31 +15,22 @@ if "%VERSION%"=="" (
     exit /b 1
 )
 
-echo.
-echo ================================
-echo   BUILD AUTOMATIZADO - %APP_NAME%
-echo   VERSAO %VERSION%
-echo ================================
-echo.
-
 set ZIP_NAME=%APP_NAME%_v%VERSION%.zip
 set COMMIT_MSG=Release v%VERSION% - build automatizado
 
-echo [1/8] Atualizando app/core/version.py...
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-"(Get-Content 'app/core/version.py') -replace 'APP_VERSION\s*=\s*\"[^\"]+\"', 'APP_VERSION = \"%VERSION%\"' | Set-Content 'app/core/version.py'"
+echo.
+echo ================================
+echo   BUILD - %APP_NAME% v%VERSION%
+echo ================================
+echo.
 
-if errorlevel 1 (
-    echo ERRO ao atualizar app/core/version.py
-    pause
-    exit /b 1
-)
+echo [1/7] Atualizando version.py...
+powershell -Command "(Get-Content 'app/core/version.py') -replace 'APP_VERSION = \".*\"', 'APP_VERSION = \"%VERSION%\"' | Set-Content 'app/core/version.py'"
 
-echo [2/8] Atualizando version_info.txt...
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+echo [2/7] Atualizando version_info.txt...
+powershell -Command ^
 "$v='%VERSION%'.Split('.');" ^
-"$maj=[int]$v[0]; $min=[int]$v[1]; $pat=[int]$v[2];" ^
-"$content = @' 
+"$content = @'
 VSVersionInfo(
   ffi=FixedFileInfo(
     filevers=({0},{1},{2},0),
@@ -69,59 +60,27 @@ VSVersionInfo(
     VarFileInfo([VarStruct('Translation', [1033, 1200])])
   ]
 )
-'@ -f $maj,$min,$pat,'%VERSION%';" ^
-"Set-Content 'version_info.txt' $content -Encoding UTF8"
+'@ -f $v[0],$v[1],$v[2],'%VERSION%';" ^
+"Set-Content 'version_info.txt' $content"
 
-if errorlevel 1 (
-    echo ERRO ao atualizar version_info.txt
-    pause
-    exit /b 1
-)
-
-echo [3/8] Limpando build antigo...
+echo [3/7] Limpando build...
 if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
-if exist "%ZIP_NAME%" del /f /q "%ZIP_NAME%"
 
-echo [4/8] Gerando EXE...
+echo [4/7] Gerando EXE...
 pyinstaller main.spec
-if errorlevel 1 (
-    echo ERRO ao gerar o EXE.
-    pause
-    exit /b 1
-)
 
-echo [5/8] Verificando EXE...
-if not exist "dist\%APP_NAME%.exe" (
-    echo EXE nao encontrado em dist\%APP_NAME%.exe
-    pause
-    exit /b 1
-)
+echo [5/7] Criando ZIP...
+powershell -Command "Compress-Archive -Path 'dist\%APP_NAME%.exe' -DestinationPath '%ZIP_NAME%' -Force"
 
-echo [6/8] Criando ZIP...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path 'dist\%APP_NAME%.exe' -DestinationPath '%ZIP_NAME%' -Force"
-if errorlevel 1 (
-    echo ERRO ao criar o ZIP.
-    pause
-    exit /b 1
-)
-
-echo [7/8] Git add / commit / push...
+echo [6/7] Git commit/push...
 git add .
 git commit -m "%COMMIT_MSG%"
 git push origin main
-if errorlevel 1 (
-    echo ERRO no push para o GitHub.
-    pause
-    exit /b 1
-)
 
-echo [8/8] Finalizado com sucesso.
 echo.
-echo Versao aplicada: %VERSION%
-echo EXE: dist\%APP_NAME%.exe
+echo Finalizado!
 echo ZIP: %ZIP_NAME%
 echo.
 
 pause
-endlocal
