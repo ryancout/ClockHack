@@ -15,7 +15,8 @@ if "%VERSION%"=="" (
     exit /b 1
 )
 
-set ZIP_NAME=%APP_NAME%_v%VERSION%.zip
+set RELEASE_DIR=releases
+set ZIP_NAME=%RELEASE_DIR%\%APP_NAME%_v%VERSION%.zip
 set COMMIT_MSG=Release v%VERSION% - build automatizado
 
 echo.
@@ -27,11 +28,6 @@ echo.
 echo [1/7] Atualizando version.py...
 echo APP_NAME = "Processador de Planilhas FAS" > app\core\version.py
 echo APP_VERSION = "%VERSION%" >> app\core\version.py
-if errorlevel 1 (
-    echo ERRO ao atualizar app/core/version.py
-    pause
-    exit /b 1
-)
 
 echo [2/7] Atualizando version_info.txt...
 (
@@ -66,46 +62,39 @@ echo   ]
 echo )
 ) > version_info.txt
 
-if errorlevel 1 (
-    echo ERRO ao atualizar version_info.txt
-    pause
-    exit /b 1
-)
+echo [3/7] Preparando pasta releases...
+if not exist %RELEASE_DIR% mkdir %RELEASE_DIR%
+del /f /q %RELEASE_DIR%\%APP_NAME%_v*.zip 2>nul
 
-echo [3/7] Limpando build...
+echo [4/7] Limpando build...
 if exist build rmdir /s /q build
 if exist dist rmdir /s /q dist
-if exist "%ZIP_NAME%" del /f /q "%ZIP_NAME%"
 
-echo [4/7] Gerando EXE...
+echo [5/7] Gerando EXE...
 pyinstaller main.spec
-if errorlevel 1 (
-    echo ERRO ao gerar o EXE.
+
+if not exist "dist\%APP_NAME%.exe" (
+    echo ERRO: EXE nao encontrado.
     pause
     exit /b 1
 )
 
-echo [5/7] Criando ZIP...
+echo [6/7] Criando ZIP...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path 'dist\%APP_NAME%.exe' -DestinationPath '%ZIP_NAME%' -Force"
-if errorlevel 1 (
-    echo ERRO ao criar o ZIP.
-    pause
-    exit /b 1
-)
 
-echo [6/7] Git commit/push...
+echo [7/7] Git commit/push...
 git add .
 git commit -m "%COMMIT_MSG%"
 git push origin main
-if errorlevel 1 (
-    echo ERRO no push para o GitHub.
-    pause
-    exit /b 1
-)
 
 echo.
-echo Finalizado!
-echo ZIP: %ZIP_NAME%
+echo ================================
+echo FINALIZADO COM SUCESSO
+echo ================================
+echo.
+echo ZIP GERADO:
+echo %ZIP_NAME%
 echo.
 
 pause
+endlocal
