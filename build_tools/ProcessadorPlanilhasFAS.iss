@@ -1,6 +1,6 @@
 ; Inno Setup script
 #define MyAppName "Processador de Planilhas FAS"
-#define MyAppVersion "6.2.0"
+#define MyAppVersion "6.3.1"
 #define MyAppPublisher "FAS"
 #define MyAppExeName "ProcessadorPlanilhasFAS.exe"
 
