@@ -53,6 +53,40 @@ def destacar_linhas_por_banco_saldo(ws, col_bs, ultima_linha_dados):
                 ws.cell(row=row, column=col).fill = fill
 
 
+def adicionar_legenda_cores(ws):
+    vermelho = PatternFill(fill_type="solid", start_color="FFFF0000", end_color="FFFF0000")
+    amarelo = PatternFill(fill_type="solid", start_color="FFFFFF00", end_color="FFFFFF00")
+    titulo_font = Font(bold=True)
+    borda = Border(
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
+        bottom=Side(style="thin"),
+    )
+
+    col_legenda = ws.max_column + 2
+
+    ws.cell(row=1, column=col_legenda, value="LEGENDA DE CORES")
+    ws.cell(row=1, column=col_legenda).font = titulo_font
+
+    ws.cell(row=2, column=col_legenda, value="Devedores")
+    ws.cell(row=2, column=col_legenda + 1, value="Saldo menor que -8h")
+    ws.cell(row=2, column=col_legenda).fill = vermelho
+
+    ws.cell(row=3, column=col_legenda, value="Extras")
+    ws.cell(row=3, column=col_legenda + 1, value="Saldo maior que 8h")
+    ws.cell(row=3, column=col_legenda).fill = amarelo
+
+    for row in range(1, 4):
+        for col in range(col_legenda, col_legenda + 2):
+            cell = ws.cell(row=row, column=col)
+            cell.border = borda
+            cell.alignment = Alignment(horizontal="center" if row == 1 else "left", vertical="center")
+
+    ws.column_dimensions[ws.cell(row=1, column=col_legenda).column_letter].width = 18
+    ws.column_dimensions[ws.cell(row=1, column=col_legenda + 1).column_letter].width = 22
+
+
 def escrever_resultado(ws, col_nome, col_bt, col_bs, soma_bt, soma_bs):
     ultima_linha = obter_ultima_linha(ws, col_nome)
     destacar_linhas_por_banco_saldo(ws, col_bs, ultima_linha)
@@ -70,3 +104,4 @@ def escrever_resultado(ws, col_nome, col_bt, col_bs, soma_bt, soma_bs):
     )
     ws.cell(row=nova_linha, column=col_inicio, value="TOTAL")
     estilizar_linha_total(ws, nova_linha, col_inicio, col_bs)
+    adicionar_legenda_cores(ws)

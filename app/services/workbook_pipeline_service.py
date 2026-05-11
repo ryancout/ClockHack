@@ -45,20 +45,31 @@ def criar_aba_ranking(wb, dados):
     ws = wb.create_sheet("RANKING")
     estilos = _estilos_resumo()
 
-    negativos = sorted([d for d in dados if d["saldo"] < 0], key=lambda x: x["saldo"])
-    positivos = sorted([d for d in dados if d["saldo"] > 0], key=lambda x: x["saldo"], reverse=True)
+    limite_8h_min = 8 * 60
 
-    ws["A1"] = "TOP DEVEDORES"
+    # Não altera a forma de cálculo: usa o saldo já calculado em minutos.
+    # A aba deixa de limitar em TOP 10 e passa a listar todos os casos críticos:
+    # devedores abaixo de -8h e extras acima de +8h.
+    negativos = sorted(
+        [d for d in dados if d["saldo"] < -limite_8h_min],
+        key=lambda x: x["saldo"],
+    )
+    positivos = sorted(
+        [d for d in dados if d["saldo"] > limite_8h_min],
+        key=lambda x:x["saldo"],
+    )
+
+    ws["A1"] = "DEVEDORES - ABAIXO DE -8 HORAS"
     ws["A1"].font = estilos["titulo"]
     ws.append(["Funcionário", "Departamento", "Banco Saldo"])
-    for d in negativos[:10]:
+    for d in negativos:
         ws.append([d["nome"], d["departamento"], d["saldo_fmt"]])
 
     inicio_segunda_secao = ws.max_row + 3
-    ws.cell(row=inicio_segunda_secao, column=1, value="TOP HORAS EXTRAS")
+    ws.cell(row=inicio_segunda_secao, column=1, value="HORAS EXTRAS - ACIMA DE 8 HORAS")
     ws.cell(row=inicio_segunda_secao, column=1).font = estilos["titulo"]
     ws.append(["Funcionário", "Departamento", "Banco Saldo"])
-    for d in positivos[:10]:
+    for d in positivos:
         ws.append([d["nome"], d["departamento"], d["saldo_fmt"]])
 
     for row in (2, inicio_segunda_secao + 1):
@@ -90,11 +101,18 @@ def criar_aba_resumo(wb, dados):
     ws = wb.create_sheet("RESUMO")
     estilos = _estilos_resumo()
 
+    limite_8h_min = 8 * 60
+    vermelho = PatternFill(fill_type="solid", start_color="FFFF0000", end_color="FFFF0000")
+    amarelo = PatternFill(fill_type="solid", start_color="FFFFFF00", end_color="FFFFFF00")
+
     resumo = OrderedDict()
     for d in sorted(dados, key=lambda item: str(item["departamento"] or "SEM DEPARTAMENTO").lower()):
         departamento = d["departamento"] if d["departamento"] not in (None, "") else "SEM DEPARTAMENTO"
         resumo.setdefault(departamento, 0)
         resumo[departamento] += d["saldo"]
+
+    # Não altera o cálculo: apenas ordena o saldo já totalizado em ordem crescente.
+    itens_resumo = sorted(resumo.items(), key=lambda item: item[1])
 
     ws["A1"] = "Resumo por departamento"
     ws["A1"].font = estilos["titulo"]
@@ -103,7 +121,7 @@ def criar_aba_resumo(wb, dados):
 
     ws.append(["Departamento", "Horas", "Horas_num"])
 
-    for departamento, total_min in resumo.items():
+    for departamento, total_min in itens_resumo:
         ws.append([departamento, formatar_horas(total_min), total_min / 60])
 
     linha_total = ws.max_row + 1
@@ -120,16 +138,45 @@ def criar_aba_resumo(wb, dados):
         cell.border = estilos["borda"]
 
     for row in range(3, linha_total + 1):
+        total_min = ws.cell(row=row, column=3).value
+        fill = None
+        if isinstance(total_min, (int, float)):
+            total_min = total_min * 60
+            if total_min < -limite_8h_min:
+                fill = vermelho
+            elif total_min > limite_8h_min:
+                fill = amarelo
+
         for col in range(1, 4):
             cell = ws.cell(row=row, column=col)
             cell.border = estilos["borda"]
             cell.alignment = estilos["esquerda"] if col == 1 else estilos["direita"]
+            if fill and row != linha_total:
+                cell.fill = fill
 
     for col in range(1, 4):
         cell = ws.cell(row=linha_total, column=col)
         cell.font = estilos["linha_total_font"]
         cell.fill = estilos["linha_total_fill"]
         cell.border = estilos["borda"]
+
+    linha_legenda = linha_total + 3
+    ws.cell(row=linha_legenda, column=1, value="LEGENDA DE CORES")
+    ws.cell(row=linha_legenda, column=1).font = estilos["titulo"]
+
+    ws.cell(row=linha_legenda + 1, column=1, value="Devedores")
+    ws.cell(row=linha_legenda + 1, column=2, value="Saldo menor que -8h")
+    ws.cell(row=linha_legenda + 1, column=1).fill = vermelho
+
+    ws.cell(row=linha_legenda + 2, column=1, value="Extras")
+    ws.cell(row=linha_legenda + 2, column=2, value="Saldo maior que 8h")
+    ws.cell(row=linha_legenda + 2, column=1).fill = amarelo
+
+    for row in range(linha_legenda, linha_legenda + 3):
+        for col in range(1, 3):
+            cell = ws.cell(row=row, column=col)
+            cell.border = estilos["borda"]
+            cell.alignment = estilos["centro"] if row == linha_legenda else estilos["esquerda"]
 
     ws.freeze_panes = "A3"
     ws.auto_filter.ref = f"A2:B{linha_total}"
