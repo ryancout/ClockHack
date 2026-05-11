@@ -3,6 +3,7 @@ import os
 from openpyxl import Workbook, load_workbook
 from app.core.exceptions import ArquivoInvalidoError
 
+
 def carregar_workbook(caminho_arquivo):
     extensao = os.path.splitext(caminho_arquivo)[1].lower()
     if extensao == ".xlsx":
@@ -16,3 +17,4 @@ def carregar_workbook(caminho_arquivo):
                 ws.append(linha)
         return wb
     raise ArquivoInvalidoError("Formato de arquivo não suportado. Envie .xlsx ou .csv.")
+

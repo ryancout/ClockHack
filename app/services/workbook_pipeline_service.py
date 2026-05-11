@@ -240,6 +240,33 @@ def processar_arquivo(caminho_arquivo, caminho_saida, departamento="Todos", gera
     elif "RESUMO" in wb.sheetnames:
         del wb["RESUMO"]
 
+    # bordas e alinhamento da aba principal
+    for row_cells in ws.iter_rows():
+        for cell in row_cells:
+            cell.border = Border(
+                left=Side(style="thin"),
+                right=Side(style="thin"),
+                top=Side(style="thin"),
+                bottom=Side(style="thin"),
+            )
+            cell.alignment = Alignment(vertical="center")
+
+    # ajuste automatico das colunas
+    from openpyxl.utils import get_column_letter
+
+    for col in ws.columns:
+        max_length = 0
+        column = get_column_letter(col[0].column)
+
+        for cell in col:
+            try:
+                if cell.value is not None:
+                    max_length = max(max_length, len(str(cell.value)))
+            except Exception:
+                pass
+
+        ws.column_dimensions[column].width = max_length + 2
+
     wb.save(caminho_saida)
 
     return {
