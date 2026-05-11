@@ -73,6 +73,12 @@ if exist dist rmdir /s /q dist
 echo [5/7] Gerando EXE...
 pyinstaller main.spec
 
+if errorlevel 1 (
+    echo ERRO ao gerar EXE.
+    pause
+    exit /b 1
+)
+
 if not exist "dist\%APP_NAME%.exe" (
     echo ERRO: EXE nao encontrado.
     pause
@@ -82,10 +88,27 @@ if not exist "dist\%APP_NAME%.exe" (
 echo [6/7] Criando ZIP...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path 'dist\%APP_NAME%.exe' -DestinationPath '%ZIP_NAME%' -Force"
 
+if errorlevel 1 (
+    echo ERRO ao criar ZIP.
+    pause
+    exit /b 1
+)
+
 echo [7/7] Git commit/push...
 git add .
 git commit -m "%COMMIT_MSG%"
+
+if errorlevel 1 (
+    echo AVISO: Nenhuma alteracao para commit ou erro no commit.
+)
+
 git push origin main
+
+if errorlevel 1 (
+    echo ERRO no git push.
+    pause
+    exit /b 1
+)
 
 echo.
 echo ================================

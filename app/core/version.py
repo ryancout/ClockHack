@@ -1,2 +1,2 @@
 APP_NAME = "Processador de Planilhas FAS" 
-APP_VERSION = "6.3.2" 
+APP_VERSION = "6.3.3" 
