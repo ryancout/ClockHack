@@ -38,6 +38,49 @@ def _estilos_resumo():
     }
 
 
+
+def criar_aba_saldo(wb, dados):
+    """Cria uma visão consolidada de saldo sem recalcular valores de horas."""
+    if "SALDO" in wb.sheetnames:
+        del wb["SALDO"]
+
+    ws = wb.create_sheet("SALDO")
+    estilos = _estilos_resumo()
+
+    ws.append(["Nome", "Setor", "Banco Total", "Banco Saldo", "Faltas"])
+
+    for d in dados:
+        ws.append(
+            [
+                d["nome"],
+                d["departamento"],
+                d["banco_total_fmt"],
+                d["saldo_fmt"],
+                d["faltas"],
+            ]
+        )
+
+    for col in range(1, 6):
+        cell = ws.cell(row=1, column=col)
+        cell.font = estilos["cabecalho_font"]
+        cell.fill = estilos["cabecalho_fill"]
+        cell.alignment = estilos["centro"]
+        cell.border = estilos["borda"]
+
+    for row in range(2, ws.max_row + 1):
+        for col in range(1, 6):
+            cell = ws.cell(row=row, column=col)
+            cell.border = estilos["borda"]
+            cell.alignment = estilos["esquerda"] if col in (1, 2) else estilos["direita"]
+
+    ws.freeze_panes = "A2"
+    ws.auto_filter.ref = f"A1:E{ws.max_row}"
+    ws.column_dimensions["A"].width = 36
+    ws.column_dimensions["B"].width = 28
+    ws.column_dimensions["C"].width = 16
+    ws.column_dimensions["D"].width = 16
+    ws.column_dimensions["E"].width = 12
+
 def criar_aba_ranking(wb, dados):
     if "RANKING" in wb.sheetnames:
         del wb["RANKING"]
@@ -185,7 +228,7 @@ def criar_aba_resumo(wb, dados):
     ws.column_dimensions["C"].hidden = True
 
 
-def processar_arquivo(caminho_arquivo, caminho_saida, departamento="Todos", gerar_ranking=True, gerar_resumo=True):
+def processar_arquivo(caminho_arquivo, caminho_saida, departamento="Todos", gerar_saldo=True, gerar_ranking=True, gerar_resumo=True):
     wb = carregar_workbook(caminho_arquivo)
     ws = wb.active
 
@@ -197,24 +240,37 @@ def processar_arquivo(caminho_arquivo, caminho_saida, departamento="Todos", gera
     col_bt = colunas["banco total"]
     col_bs = colunas["banco saldo"]
 
+    # A coluna de faltas pode variar de nome entre relatórios. Ela é opcional
+    # para não interferir no processamento e nos cálculos já existentes.
+    col_faltas = None
+    for nome_coluna, indice in colunas.items():
+        if nome_coluna == "faltas" or "falta" in nome_coluna:
+            col_faltas = indice
+            break
+
     aplicar_filtro_departamento(ws, col_depart, departamento)
 
     dados = []
     for row in range(2, ws.max_row + 1):
         nome = ws.cell(row=row, column=col_nome).value
         dep = ws.cell(row=row, column=col_depart).value
+        banco_total_valor = ws.cell(row=row, column=col_bt).value
         saldo_valor = ws.cell(row=row, column=col_bs).value
+        faltas_valor = ws.cell(row=row, column=col_faltas).value if col_faltas else ""
 
         if nome in (None, ""):
             continue
 
+        banco_total_min = para_minutos(banco_total_valor)
         saldo_min = para_minutos(saldo_valor)
         dados.append(
             {
                 "nome": nome,
                 "departamento": dep,
+                "banco_total_fmt": formatar_horas(banco_total_min),
                 "saldo": saldo_min,
                 "saldo_fmt": formatar_horas(saldo_min),
+                "faltas": faltas_valor,
             }
         )
 
@@ -229,6 +285,11 @@ def processar_arquivo(caminho_arquivo, caminho_saida, departamento="Todos", gera
         resultado_calc["soma_bt"],
         resultado_calc["soma_bs"],
     )
+
+    if gerar_saldo:
+        criar_aba_saldo(wb, dados)
+    elif "SALDO" in wb.sheetnames:
+        del wb["SALDO"]
 
     if gerar_ranking:
         criar_aba_ranking(wb, dados)
@@ -277,5 +338,6 @@ def processar_arquivo(caminho_arquivo, caminho_saida, departamento="Todos", gera
         "tipo_entrada": os.path.splitext(caminho_arquivo)[1].lower().replace(".", "").upper(),
         "departamento": departamento,
         "gerou_ranking": gerar_ranking,
+        "gerou_saldo": gerar_saldo,
         "gerou_resumo": gerar_resumo,
     }

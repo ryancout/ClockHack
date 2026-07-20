@@ -166,8 +166,10 @@ class MainWindow:
 
         checks = ctk.CTkFrame(opcoes_box, fg_color="transparent")
         checks.pack(fill="x", padx=12, pady=(0, 10))
+        self.var_saldo = ctk.BooleanVar(value=True)
         self.var_resumo = ctk.BooleanVar(value=True)
         self.var_ranking = ctk.BooleanVar(value=True)
+        ctk.CTkCheckBox(checks, text="Gerar aba SALDO", variable=self.var_saldo).pack(anchor="w", pady=2)
         ctk.CTkCheckBox(checks, text="Gerar aba RESUMO", variable=self.var_resumo).pack(anchor="w", pady=2)
         ctk.CTkCheckBox(checks, text="Gerar aba RANKING", variable=self.var_ranking).pack(anchor="w", pady=2)
 
@@ -263,6 +265,7 @@ class MainWindow:
     def _processar_clicado(self):
         self.controller.processar(
             self.combo_departamento.get(),
+            gerar_saldo=self.var_saldo.get(),
             gerar_resumo=self.var_resumo.get(),
             gerar_ranking=self.var_ranking.get(),
         )
@@ -344,6 +347,8 @@ class MainWindow:
             ctk.CTkLabel(box, text=f"Funcionários: {item.get('quantidade_funcionarios', 0)}", text_color=FG_TEXT, font=("Segoe UI", 10)).pack(anchor="w", padx=10)
             ctk.CTkLabel(box, text=f"BT: {item.get('banco_total', '--:--')} | BS: {item.get('banco_saldo', '--:--')}", text_color=FG_TEXT, font=("Segoe UI", 10)).pack(anchor="w", padx=10)
             abas = []
+            if item.get("gerou_saldo", True):
+                abas.append("SALDO")
             if item.get("gerou_resumo", True):
                 abas.append("RESUMO")
             if item.get("gerou_ranking", True):

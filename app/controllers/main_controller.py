@@ -106,7 +106,7 @@ class MainController:
             if not confirmar:
                 raise SobrescritaCanceladaError("Gravação cancelada para evitar sobrescrita de arquivo existente.")
 
-    def processar(self, departamento, gerar_resumo=True, gerar_ranking=True):
+    def processar(self, departamento, gerar_saldo=True, gerar_resumo=True, gerar_ranking=True):
         if not self.arquivos_selecionados:
             messagebox.showwarning("Aviso", "Selecione um ou mais arquivos primeiro.")
             return
@@ -175,6 +175,7 @@ class MainController:
                     arquivo,
                     caminho_saida,
                     departamento,
+                    gerar_saldo=gerar_saldo,
                     gerar_ranking=gerar_ranking,
                     gerar_resumo=gerar_resumo,
                 )
@@ -194,6 +195,7 @@ class MainController:
                         "banco_total": resultado["banco_total"],
                         "banco_saldo": resultado["banco_saldo"],
                         "departamento": resultado["departamento"],
+                        "gerou_saldo": resultado["gerou_saldo"],
                         "gerou_resumo": resultado["gerou_resumo"],
                         "gerou_ranking": resultado["gerou_ranking"],
                     }
@@ -250,6 +252,7 @@ class MainController:
                 "ignorados": ignorados,
                 "departamento": departamento,
                 "pasta_saida": pasta_saida,
+                "gerou_saldo": gerar_saldo,
                 "gerou_resumo": gerar_resumo,
                 "gerou_ranking": gerar_ranking,
                 "tempo_execucao_segundos": round(tempo_total, 2),
@@ -266,6 +269,7 @@ class MainController:
             f"Banco Total: {formatar_horas(total_bt_min)}\n"
             f"Banco Saldo: {formatar_horas(total_bs_min)}\n"
             f"Tempo de execução: {tempo_total:.1f}s\n"
+            f"Saldo: {'Sim' if gerar_saldo else 'Não'}\n"
             f"Resumo: {'Sim' if gerar_resumo else 'Não'}\n"
             f"Ranking: {'Sim' if gerar_ranking else 'Não'}\n\n"
             f"Pasta de saída:\n{pasta_saida}",
