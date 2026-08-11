@@ -1,10 +1,12 @@
 import os
-from app.core.config import COLUNAS_OBRIGATORIAS, MIN_FUNCIONARIOS_ALERTA, MAX_FILE_SIZE_MB
+from app.core.config import (
+    COLUNAS_OBRIGATORIAS,
+    EXTENSOES_ENTRADA_SUPORTADAS,
+    MAX_FILE_SIZE_MB,
+    MIN_FUNCIONARIOS_ALERTA,
+)
 from app.core.exceptions import ArquivoInvalidoError, ColunaObrigatoriaError, ValidacaoNegocioError
 from app.services.file_service import nome_curto
-
-
-EXTENSOES_SUPORTADAS = {".xlsx", ".csv"}
 
 
 def validar_arquivo_entrada(caminho):
@@ -16,9 +18,9 @@ def validar_arquivo_entrada(caminho):
         raise ArquivoInvalidoError(f"Selecione um arquivo válido: {nome_curto(caminho)}")
 
     extensao = os.path.splitext(caminho)[1].lower()
-    if extensao not in EXTENSOES_SUPORTADAS:
+    if extensao not in EXTENSOES_ENTRADA_SUPORTADAS:
         raise ArquivoInvalidoError(
-            f"Formato não suportado para {nome_curto(caminho)}. Use arquivos .xlsx ou .csv."
+            f"Formato não suportado para {nome_curto(caminho)}. Selecione um arquivo CSV (.csv)."
         )
 
     tamanho_bytes = os.path.getsize(caminho)
@@ -33,20 +35,19 @@ def validar_arquivo_entrada(caminho):
 
 
 def mapear_colunas(ws):
-    for row in range(1, 10):
-        temp = {}
-        for col in range(1, ws.max_column + 1):
-            valor = ws.cell(row=row, column=col).value
-            if valor:
-                chave_original = str(valor).strip()
-                chave_normalizada = chave_original.lower()
-                temp[chave_normalizada] = col
+    colunas = {}
+    for col in range(1, ws.max_column + 1):
+        valor = ws.cell(row=1, column=col).value
+        if valor:
+            chave_original = str(valor).strip()
+            chave_normalizada = chave_original.lower()
+            colunas[chave_normalizada] = col
 
-        if "nome do departamento" in temp:
-            return temp
+    if "nome do departamento" in colunas:
+        return colunas
 
     raise ArquivoInvalidoError(
-        "Cabeçalho não encontrado. Verifique se a planilha possui as colunas esperadas."
+        "Cabeçalho não encontrado na primeira linha. Verifique o formato do relatório CSV."
     )
 
 

@@ -1,12 +1,11 @@
 import json
 import os
 import tempfile
-from app.core.config import DEFAULT_PREFERENCES, DATA_DIR, PREFERENCES_FILE
-
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+from app.core.config import DEFAULT_PREFERENCES, PREFERENCES_FILE
 
 
 def _atomic_write_json(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
     fd, temp_path = tempfile.mkstemp(prefix=path.stem + "_", suffix=".tmp", dir=str(path.parent))
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:

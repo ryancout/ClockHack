@@ -30,18 +30,16 @@ PREFERENCES_FILE = DATA_DIR / "preferences.json"
 AUDIT_FILE = DATA_DIR / "audit.json"
 
 APP_TITLE = f"{APP_NAME} - V{APP_VERSION}"
-APP_GEOMETRY = "1220x760"
-MIN_WIDTH = 1220
-MIN_HEIGHT = 760
+APP_GEOMETRY = "1120x720"
+MIN_WIDTH = 960
+MIN_HEIGHT = 640
 
-EXTENSOES_ACEITAS = [
-    ("Arquivos Excel e CSV", "*.xlsx *.csv"),
-    ("Arquivos Excel", "*.xlsx"),
-    ("Arquivos CSV", "*.csv"),
-]
+EXTENSOES_ENTRADA_SUPORTADAS = frozenset({".csv"})
+TIPOS_ARQUIVO_ENTRADA = [("Arquivos CSV", "*.csv")]
 
 COLUNAS_OBRIGATORIAS = [
     "Nome do funcionário",
+    "Número de matrícula",
     "Nome do departamento",
     "Banco Total",
     "Banco Saldo",
@@ -57,11 +55,11 @@ BG_CARD = "#ffffff"
 BG_BOX = "#f7fafc"
 FG_TITLE = "#17324d"
 FG_TEXT = "#31475e"
-FG_MUTED = "#6b7f92"
+FG_MUTED = "#52677a"
 BORDER = "#d5dfe8"
 PRIMARY = "#0b63ce"
 SUCCESS = "#0f7a5f"
-WARNING = "#b76e00"
+WARNING = "#8a4f00"
 ERROR = "#b42318"
 
 FONT_TITLE = ("Segoe UI", 24, "bold")

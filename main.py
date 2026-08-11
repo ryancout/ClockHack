@@ -1,11 +1,9 @@
-import os
-import sys
+"""Ponto de entrada do aplicativo desktop."""
 
-def resource_path(relative_path):
-    if hasattr(sys, "_MEIPASS"):
-        return os.path.join(sys._MEIPASS, relative_path)
-    return os.path.join(os.path.abspath("."), relative_path)
+from app.core.logger import configurar_logger
 from app.ui.main_window import iniciar_app
 
+
 if __name__ == "__main__":
+    configurar_logger()
     iniciar_app()

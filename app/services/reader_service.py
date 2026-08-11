@@ -1,13 +1,11 @@
 import csv
 import os
-from openpyxl import Workbook, load_workbook
+from openpyxl import Workbook
 from app.core.exceptions import ArquivoInvalidoError
 
 
 def carregar_workbook(caminho_arquivo):
     extensao = os.path.splitext(caminho_arquivo)[1].lower()
-    if extensao == ".xlsx":
-        return load_workbook(caminho_arquivo)
     if extensao == ".csv":
         wb = Workbook()
         ws = wb.active
@@ -16,5 +14,4 @@ def carregar_workbook(caminho_arquivo):
             for linha in leitor:
                 ws.append(linha)
         return wb
-    raise ArquivoInvalidoError("Formato de arquivo não suportado. Envie .xlsx ou .csv.")
-
+    raise ArquivoInvalidoError("Formato de arquivo não suportado. Selecione um arquivo CSV (.csv).")

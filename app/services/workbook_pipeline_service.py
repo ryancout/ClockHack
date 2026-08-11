@@ -1,17 +1,30 @@
+"""Orquestra a transformação do CSV no relatório Excel final."""
+
 import os
-from collections import OrderedDict
 
-from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-
+from app.domain import (
+    RegistroFuncionario,
+    formatar_horas,
+    obter_final_matricula,
+    para_minutos,
+)
+from app.reports import criar_aba_ranking, criar_aba_resumo, criar_aba_saldo
 from app.services.calculator_service import calcular_totais
 from app.services.filter_service import aplicar_filtro_departamento, listar_departamentos
 from app.services.reader_service import carregar_workbook
-from app.services.time_service import formatar_horas, para_minutos
-from app.services.validator_service import mapear_colunas, validar_colunas, validar_resultado
+from app.services.validator_service import (
+    mapear_colunas,
+    validar_arquivo_entrada,
+    validar_colunas,
+    validar_resultado,
+)
+from app.services.worksheet_formatting_service import formatar_aba_principal
 from app.services.writer_service import escrever_resultado
 
 
 def obter_departamentos(caminho_arquivo):
+    """Lista os departamentos disponíveis em um arquivo de entrada válido."""
+    validar_arquivo_entrada(caminho_arquivo)
     wb = carregar_workbook(caminho_arquivo)
     ws = wb.active
     colunas = mapear_colunas(ws)
@@ -19,216 +32,94 @@ def obter_departamentos(caminho_arquivo):
     return listar_departamentos(ws, colunas["nome do departamento"])
 
 
-def _estilos_resumo():
-    return {
-        "titulo": Font(size=14, bold=True),
-        "cabecalho_font": Font(bold=True, color="FFFFFF"),
-        "cabecalho_fill": PatternFill("solid", fgColor="1F4E78"),
-        "linha_total_font": Font(bold=True),
-        "linha_total_fill": PatternFill("solid", fgColor="D9EAF7"),
-        "borda": Border(
-            left=Side(style="thin"),
-            right=Side(style="thin"),
-            top=Side(style="thin"),
-            bottom=Side(style="thin"),
-        ),
-        "centro": Alignment(horizontal="center", vertical="center"),
-        "direita": Alignment(horizontal="right", vertical="center"),
-        "esquerda": Alignment(horizontal="left", vertical="center"),
-    }
+def _obter_coluna_faltas(colunas):
+    """Localiza a primeira coluna de faltas aceita pelo relatório."""
+    for nome_coluna, indice in colunas.items():
+        if nome_coluna == "faltas" or "falta" in nome_coluna:
+            return indice
+    return None
 
 
+def _extrair_registros(ws, colunas):
+    """Converte as linhas da planilha em registros de domínio."""
+    col_nome = colunas["nome do funcionário"]
+    col_matricula = colunas["número de matrícula"]
+    col_depart = colunas["nome do departamento"]
+    col_bt = colunas["banco total"]
+    col_bs = colunas["banco saldo"]
+    col_faltas = _obter_coluna_faltas(colunas)
 
-def criar_aba_saldo(wb, dados):
-    """Cria uma visão consolidada de saldo sem recalcular valores de horas."""
-    if "SALDO" in wb.sheetnames:
-        del wb["SALDO"]
+    registros = []
+    for row in range(2, ws.max_row + 1):
+        nome = ws.cell(row=row, column=col_nome).value
+        matricula = ws.cell(row=row, column=col_matricula).value
+        final_matricula = obter_final_matricula(matricula)
+        departamento = ws.cell(row=row, column=col_depart).value
+        banco_total_valor = ws.cell(row=row, column=col_bt).value
+        banco_saldo_valor = ws.cell(row=row, column=col_bs).value
+        faltas = ws.cell(row=row, column=col_faltas).value if col_faltas else ""
 
-    ws = wb.create_sheet("SALDO")
-    estilos = _estilos_resumo()
+        if nome in (None, ""):
+            continue
 
-    ws.append(["Nome", "Setor", "Banco Total", "Banco Saldo", "Faltas"])
-
-    for d in dados:
-        ws.append(
-            [
-                d["nome"],
-                d["departamento"],
-                d["banco_total_fmt"],
-                d["saldo_fmt"],
-                d["faltas"],
-            ]
+        registros.append(
+            RegistroFuncionario(
+                nome=nome,
+                final_matricula=final_matricula,
+                departamento=departamento,
+                banco_total_minutos=para_minutos(banco_total_valor),
+                banco_saldo_minutos=para_minutos(banco_saldo_valor),
+                faltas=faltas,
+            )
         )
 
-    for col in range(1, 6):
-        cell = ws.cell(row=1, column=col)
-        cell.font = estilos["cabecalho_font"]
-        cell.fill = estilos["cabecalho_fill"]
-        cell.alignment = estilos["centro"]
-        cell.border = estilos["borda"]
+    return registros
 
+
+def _mascarar_matriculas_na_planilha(ws, col_matricula):
+    """Mantém somente os três dígitos finais da matrícula na saída."""
+    ws.cell(row=1, column=col_matricula, value="Final da matrícula")
     for row in range(2, ws.max_row + 1):
-        for col in range(1, 6):
-            cell = ws.cell(row=row, column=col)
-            cell.border = estilos["borda"]
-            cell.alignment = estilos["esquerda"] if col in (1, 2) else estilos["direita"]
+        cell = ws.cell(row=row, column=col_matricula)
+        cell.value = obter_final_matricula(cell.value)
+        cell.number_format = "@"
 
-    ws.freeze_panes = "A2"
-    ws.auto_filter.ref = f"A1:E{ws.max_row}"
-    ws.column_dimensions["A"].width = 36
-    ws.column_dimensions["B"].width = 28
-    ws.column_dimensions["C"].width = 16
-    ws.column_dimensions["D"].width = 16
-    ws.column_dimensions["E"].width = 12
 
-def criar_aba_ranking(wb, dados):
-    if "RANKING" in wb.sheetnames:
+def _atualizar_abas_auxiliares(
+    wb,
+    registros,
+    *,
+    gerar_saldo,
+    gerar_ranking,
+    gerar_resumo,
+):
+    """Cria ou remove as abas opcionais conforme a seleção do usuário."""
+    if gerar_saldo:
+        criar_aba_saldo(wb, registros)
+    elif "SALDO" in wb.sheetnames:
+        del wb["SALDO"]
+
+    if gerar_ranking:
+        criar_aba_ranking(wb, registros)
+    elif "RANKING" in wb.sheetnames:
         del wb["RANKING"]
 
-    ws = wb.create_sheet("RANKING")
-    estilos = _estilos_resumo()
-
-    limite_8h_min = 8 * 60
-
-    # Não altera a forma de cálculo: usa o saldo já calculado em minutos.
-    # A aba deixa de limitar em TOP 10 e passa a listar todos os casos críticos:
-    # devedores abaixo de -8h e extras acima de +8h.
-    negativos = sorted(
-        [d for d in dados if d["saldo"] < -limite_8h_min],
-        key=lambda x: x["saldo"],
-    )
-    positivos = sorted(
-        [d for d in dados if d["saldo"] > limite_8h_min],
-        key=lambda x:x["saldo"],
-    )
-
-    ws["A1"] = "DEVEDORES - ABAIXO DE -8 HORAS"
-    ws["A1"].font = estilos["titulo"]
-    ws.append(["Funcionário", "Departamento", "Banco Saldo"])
-    for d in negativos:
-        ws.append([d["nome"], d["departamento"], d["saldo_fmt"]])
-
-    inicio_segunda_secao = ws.max_row + 3
-    ws.cell(row=inicio_segunda_secao, column=1, value="HORAS EXTRAS - ACIMA DE 8 HORAS")
-    ws.cell(row=inicio_segunda_secao, column=1).font = estilos["titulo"]
-    ws.append(["Funcionário", "Departamento", "Banco Saldo"])
-    for d in positivos:
-        ws.append([d["nome"], d["departamento"], d["saldo_fmt"]])
-
-    for row in (2, inicio_segunda_secao + 1):
-        for col in range(1, 4):
-            cell = ws.cell(row=row, column=col)
-            cell.font = estilos["cabecalho_font"]
-            cell.fill = estilos["cabecalho_fill"]
-            cell.alignment = estilos["centro"]
-            cell.border = estilos["borda"]
-
-    for row in range(3, ws.max_row + 1):
-        if row == inicio_segunda_secao:
-            continue
-        for col in range(1, 4):
-            cell = ws.cell(row=row, column=col)
-            cell.border = estilos["borda"]
-            cell.alignment = estilos["esquerda"] if col < 3 else estilos["direita"]
-
-    ws.freeze_panes = None
-    ws.column_dimensions["A"].width = 36
-    ws.column_dimensions["B"].width = 28
-    ws.column_dimensions["C"].width = 16
-
-
-def criar_aba_resumo(wb, dados):
-    if "RESUMO" in wb.sheetnames:
+    if gerar_resumo:
+        criar_aba_resumo(wb, registros)
+    elif "RESUMO" in wb.sheetnames:
         del wb["RESUMO"]
 
-    ws = wb.create_sheet("RESUMO")
-    estilos = _estilos_resumo()
 
-    limite_8h_min = 8 * 60
-    vermelho = PatternFill(fill_type="solid", start_color="FFFF0000", end_color="FFFF0000")
-    amarelo = PatternFill(fill_type="solid", start_color="FFFFFF00", end_color="FFFFFF00")
-
-    resumo = OrderedDict()
-    for d in sorted(dados, key=lambda item: str(item["departamento"] or "SEM DEPARTAMENTO").lower()):
-        departamento = d["departamento"] if d["departamento"] not in (None, "") else "SEM DEPARTAMENTO"
-        resumo.setdefault(departamento, 0)
-        resumo[departamento] += d["saldo"]
-
-    # Não altera o cálculo: apenas ordena o saldo já totalizado em ordem crescente.
-    itens_resumo = sorted(resumo.items(), key=lambda item: item[1])
-
-    ws["A1"] = "Resumo por departamento"
-    ws["A1"].font = estilos["titulo"]
-    ws.merge_cells("A1:C1")
-    ws["A1"].alignment = estilos["esquerda"]
-
-    ws.append(["Departamento", "Horas", "Horas_num"])
-
-    for departamento, total_min in itens_resumo:
-        ws.append([departamento, formatar_horas(total_min), total_min / 60])
-
-    linha_total = ws.max_row + 1
-    total_geral_min = sum(resumo.values())
-    ws.cell(row=linha_total, column=1, value="TOTAL")
-    ws.cell(row=linha_total, column=2, value=formatar_horas(total_geral_min))
-    ws.cell(row=linha_total, column=3, value=total_geral_min / 60)
-
-    for col in range(1, 4):
-        cell = ws.cell(row=2, column=col)
-        cell.font = estilos["cabecalho_font"]
-        cell.fill = estilos["cabecalho_fill"]
-        cell.alignment = estilos["centro"]
-        cell.border = estilos["borda"]
-
-    for row in range(3, linha_total + 1):
-        total_min = ws.cell(row=row, column=3).value
-        fill = None
-        if isinstance(total_min, (int, float)):
-            total_min = total_min * 60
-            if total_min < -limite_8h_min:
-                fill = vermelho
-            elif total_min > limite_8h_min:
-                fill = amarelo
-
-        for col in range(1, 4):
-            cell = ws.cell(row=row, column=col)
-            cell.border = estilos["borda"]
-            cell.alignment = estilos["esquerda"] if col == 1 else estilos["direita"]
-            if fill and row != linha_total:
-                cell.fill = fill
-
-    for col in range(1, 4):
-        cell = ws.cell(row=linha_total, column=col)
-        cell.font = estilos["linha_total_font"]
-        cell.fill = estilos["linha_total_fill"]
-        cell.border = estilos["borda"]
-
-    linha_legenda = linha_total + 3
-    ws.cell(row=linha_legenda, column=1, value="LEGENDA DE CORES")
-    ws.cell(row=linha_legenda, column=1).font = estilos["titulo"]
-
-    ws.cell(row=linha_legenda + 1, column=1, value="Devedores")
-    ws.cell(row=linha_legenda + 1, column=2, value="Saldo menor que -8h")
-    ws.cell(row=linha_legenda + 1, column=1).fill = vermelho
-
-    ws.cell(row=linha_legenda + 2, column=1, value="Extras")
-    ws.cell(row=linha_legenda + 2, column=2, value="Saldo maior que 8h")
-    ws.cell(row=linha_legenda + 2, column=1).fill = amarelo
-
-    for row in range(linha_legenda, linha_legenda + 3):
-        for col in range(1, 3):
-            cell = ws.cell(row=row, column=col)
-            cell.border = estilos["borda"]
-            cell.alignment = estilos["centro"] if row == linha_legenda else estilos["esquerda"]
-
-    ws.freeze_panes = "A3"
-    ws.auto_filter.ref = f"A2:B{linha_total}"
-    ws.column_dimensions["A"].width = 34
-    ws.column_dimensions["B"].width = 16
-    ws.column_dimensions["C"].hidden = True
-
-
-def processar_arquivo(caminho_arquivo, caminho_saida, departamento="Todos", gerar_saldo=True, gerar_ranking=True, gerar_resumo=True):
+def processar_arquivo(
+    caminho_arquivo,
+    caminho_saida,
+    departamento="Todos",
+    gerar_saldo=True,
+    gerar_ranking=True,
+    gerar_resumo=True,
+):
+    """Processa um CSV e grava o relatório Excel no caminho informado."""
+    validar_arquivo_entrada(caminho_arquivo)
     wb = carregar_workbook(caminho_arquivo)
     ws = wb.active
 
@@ -236,43 +127,14 @@ def processar_arquivo(caminho_arquivo, caminho_saida, departamento="Todos", gera
     validar_colunas(colunas)
 
     col_nome = colunas["nome do funcionário"]
+    col_matricula = colunas["número de matrícula"]
     col_depart = colunas["nome do departamento"]
     col_bt = colunas["banco total"]
     col_bs = colunas["banco saldo"]
 
-    # A coluna de faltas pode variar de nome entre relatórios. Ela é opcional
-    # para não interferir no processamento e nos cálculos já existentes.
-    col_faltas = None
-    for nome_coluna, indice in colunas.items():
-        if nome_coluna == "faltas" or "falta" in nome_coluna:
-            col_faltas = indice
-            break
-
     aplicar_filtro_departamento(ws, col_depart, departamento)
-
-    dados = []
-    for row in range(2, ws.max_row + 1):
-        nome = ws.cell(row=row, column=col_nome).value
-        dep = ws.cell(row=row, column=col_depart).value
-        banco_total_valor = ws.cell(row=row, column=col_bt).value
-        saldo_valor = ws.cell(row=row, column=col_bs).value
-        faltas_valor = ws.cell(row=row, column=col_faltas).value if col_faltas else ""
-
-        if nome in (None, ""):
-            continue
-
-        banco_total_min = para_minutos(banco_total_valor)
-        saldo_min = para_minutos(saldo_valor)
-        dados.append(
-            {
-                "nome": nome,
-                "departamento": dep,
-                "banco_total_fmt": formatar_horas(banco_total_min),
-                "saldo": saldo_min,
-                "saldo_fmt": formatar_horas(saldo_min),
-                "faltas": faltas_valor,
-            }
-        )
+    registros = _extrair_registros(ws, colunas)
+    _mascarar_matriculas_na_planilha(ws, col_matricula)
 
     resultado_calc = calcular_totais(ws, col_nome, col_bt, col_bs)
     validar_resultado(resultado_calc["quantidade_funcionarios"])
@@ -286,48 +148,14 @@ def processar_arquivo(caminho_arquivo, caminho_saida, departamento="Todos", gera
         resultado_calc["soma_bs"],
     )
 
-    if gerar_saldo:
-        criar_aba_saldo(wb, dados)
-    elif "SALDO" in wb.sheetnames:
-        del wb["SALDO"]
-
-    if gerar_ranking:
-        criar_aba_ranking(wb, dados)
-    elif "RANKING" in wb.sheetnames:
-        del wb["RANKING"]
-
-    if gerar_resumo:
-        criar_aba_resumo(wb, dados)
-    elif "RESUMO" in wb.sheetnames:
-        del wb["RESUMO"]
-
-    # bordas e alinhamento da aba principal
-    for row_cells in ws.iter_rows():
-        for cell in row_cells:
-            cell.border = Border(
-                left=Side(style="thin"),
-                right=Side(style="thin"),
-                top=Side(style="thin"),
-                bottom=Side(style="thin"),
-            )
-            cell.alignment = Alignment(vertical="center")
-
-    # ajuste automatico das colunas
-    from openpyxl.utils import get_column_letter
-
-    for col in ws.columns:
-        max_length = 0
-        column = get_column_letter(col[0].column)
-
-        for cell in col:
-            try:
-                if cell.value is not None:
-                    max_length = max(max_length, len(str(cell.value)))
-            except Exception:
-                pass
-
-        ws.column_dimensions[column].width = max_length + 2
-
+    _atualizar_abas_auxiliares(
+        wb,
+        registros,
+        gerar_saldo=gerar_saldo,
+        gerar_ranking=gerar_ranking,
+        gerar_resumo=gerar_resumo,
+    )
+    formatar_aba_principal(ws)
     wb.save(caminho_saida)
 
     return {

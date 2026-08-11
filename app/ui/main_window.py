@@ -1,8 +1,8 @@
 import os
 import sys
 import ctypes
+from tkinter import messagebox
 
-import tkinter as tk
 import customtkinter as ctk
 from PIL import Image
 
@@ -31,6 +31,8 @@ from app.core.config import (
     WARNING,
 )
 from app.core.version import APP_VERSION
+from app.ui.view_state import EstadoInterface, obter_configuracao_interface
+from app.ui.rhid_dialog import RhidConnectionDialog
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
@@ -63,65 +65,129 @@ class MainWindow:
                 except Exception:
                     pass
         self.root.title(APP_TITLE)
-        self.root.geometry(APP_GEOMETRY)
         self.root.minsize(MIN_WIDTH, MIN_HEIGHT)
+        self._aplicar_geometria_inicial()
         self.root.configure(fg_color=BG_APP)
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
+        self.root.protocol("WM_DELETE_WINDOW", self._ao_tentar_fechar)
 
         self.controller = MainController(self)
         self.logo_ref = None
+        self.estado_interface = EstadoInterface.VAZIO
+        self._valor_progresso = 0.0
+        self._rhid_dialog = None
 
         self._montar_layout()
+        self._configurar_atalhos()
         self.controller.iniciar()
+
+    def _aplicar_geometria_inicial(self):
+        """Centraliza a janela e limita sua geometria inicial à tela disponível."""
+        try:
+            geometria_base = APP_GEOMETRY.split("+", 1)[0]
+            largura_texto, altura_texto = geometria_base.lower().split("x", 1)
+            largura_desejada = max(int(largura_texto), MIN_WIDTH)
+            altura_desejada = max(int(altura_texto), MIN_HEIGHT)
+        except (AttributeError, TypeError, ValueError):
+            largura_desejada = MIN_WIDTH
+            altura_desejada = MIN_HEIGHT
+
+        largura_tela = max(1, self.root.winfo_screenwidth())
+        altura_tela = max(1, self.root.winfo_screenheight())
+        largura = min(largura_desejada, largura_tela)
+        altura = min(altura_desejada, altura_tela)
+        posicao_x = max(0, (largura_tela - largura) // 2)
+        posicao_y = max(0, (altura_tela - altura) // 2)
+
+        self.root.geometry(f"{largura}x{altura}+{posicao_x}+{posicao_y}")
 
     def _montar_layout(self):
         container = ctk.CTkFrame(self.root, fg_color=BG_APP, corner_radius=0)
-        container.pack(fill="both", expand=True, padx=18, pady=18)
+        container.grid(row=0, column=0, sticky="nsew", padx=18, pady=18)
+        container.grid_rowconfigure(0, weight=1)
+        container.grid_columnconfigure(0, weight=3, minsize=560)
+        container.grid_columnconfigure(1, weight=1, minsize=280)
 
-        esquerdo = ctk.CTkFrame(container, fg_color=BG_APP, corner_radius=0)
-        esquerdo.pack(side="left", fill="both", expand=True, padx=(0, 10))
+        esquerdo = ctk.CTkScrollableFrame(
+            container,
+            fg_color=BG_APP,
+            corner_radius=0,
+            scrollbar_button_color=BORDER,
+            scrollbar_button_hover_color=FG_MUTED,
+        )
+        esquerdo.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
+        esquerdo.grid_columnconfigure(0, weight=1)
 
-        direito = ctk.CTkFrame(container, fg_color=BG_APP, corner_radius=0, width=320)
-        direito.pack(side="right", fill="y")
-        direito.pack_propagate(False)
+        direito = ctk.CTkFrame(container, fg_color=BG_APP, corner_radius=0)
+        direito.grid(row=0, column=1, sticky="nsew")
 
         self._montar_card_principal(esquerdo)
         self._montar_lateral(direito)
 
     def _montar_card_principal(self, parent):
         card = ctk.CTkFrame(parent, fg_color=BG_CARD, corner_radius=20, border_width=1, border_color=BORDER)
-        card.pack(fill="both", expand=True)
+        card.grid(row=0, column=0, sticky="nsew")
 
         header = ctk.CTkFrame(card, fg_color="transparent")
-        header.pack(fill="x", padx=24, pady=(24, 8))
+        header.pack(fill="x", padx=24, pady=(20, 12))
+        header.grid_columnconfigure(1, weight=1)
 
         logo_path = resource_path("app/assets/logo.png")
         if os.path.exists(logo_path):
             try:
-                logo = ctk.CTkImage(light_image=Image.open(logo_path), size=(150, 76))
-                ctk.CTkLabel(header, image=logo, text="").pack(anchor="center")
+                logo = ctk.CTkImage(light_image=Image.open(logo_path), size=(112, 57))
+                ctk.CTkLabel(header, image=logo, text="").grid(
+                    row=0,
+                    column=0,
+                    sticky="nw",
+                    padx=(0, 18),
+                )
                 self.logo_ref = logo
             except Exception:
                 pass
 
-        ctk.CTkLabel(card, text="Processador de Planilhas", font=FONT_TITLE, text_color=FG_TITLE).pack(pady=(4, 4))
+        textos_header = ctk.CTkFrame(header, fg_color="transparent")
+        textos_header.grid(row=0, column=1, sticky="nsew")
+        textos_header.grid_columnconfigure(0, weight=1)
+
         ctk.CTkLabel(
-            card,
-            text="Selecione arquivo(s), escolha o departamento, marque as abas desejadas, processe e salve a saída em Excel.",
+            textos_header,
+            text="Processador de Planilhas",
+            font=FONT_TITLE,
+            text_color=FG_TITLE,
+            anchor="w",
+        ).grid(row=0, column=0, sticky="ew")
+        label_subtitulo = ctk.CTkLabel(
+            textos_header,
+            text="Selecione arquivo(s) CSV, escolha o departamento, marque as abas desejadas, processe e salve a saída em Excel.",
             font=FONT_SUBTITLE,
             text_color=FG_MUTED,
-            wraplength=760,
-        ).pack(pady=(0, 10))
+            wraplength=360,
+            justify="left",
+            anchor="w",
+        )
+        label_subtitulo.grid(row=1, column=0, sticky="ew", pady=(2, 3))
+        self._vincular_quebra_texto(label_subtitulo, textos_header, margem=4)
 
-        self.label_versao = ctk.CTkLabel(card, text="", font=("Segoe UI", 10, "bold"), text_color=PRIMARY)
-        self.label_versao.pack(pady=(0, 14))
+        self.label_versao = ctk.CTkLabel(
+            textos_header,
+            text="",
+            font=("Segoe UI", 10, "bold"),
+            text_color=PRIMARY,
+            anchor="w",
+        )
+        self.label_versao.grid(row=2, column=0, sticky="w")
 
         actions = ctk.CTkFrame(card, fg_color="transparent")
-        actions.pack(fill="x", padx=24, pady=(0, 12))
+        actions.pack(fill="x", padx=24, pady=(0, 18))
 
         top_actions = ctk.CTkFrame(actions, fg_color="transparent")
         top_actions.pack(fill="x", pady=(0, 10))
+        top_actions.grid_columnconfigure(0, weight=1)
+        top_actions.grid_columnconfigure(1, weight=1)
 
-        ctk.CTkButton(
+        self.btn_selecionar = ctk.CTkButton(
             top_actions,
             text="Selecionar arquivo(s)",
             height=42,
@@ -129,9 +195,10 @@ class MainWindow:
             hover_color="#0955af",
             font=FONT_BUTTON,
             command=self.controller.selecionar_arquivos,
-        ).pack(side="left", fill="x", expand=True, padx=(0, 5))
+        )
+        self.btn_selecionar.grid(row=0, column=0, sticky="ew", padx=(0, 5))
 
-        ctk.CTkButton(
+        self.btn_limpar = ctk.CTkButton(
             top_actions,
             text="Limpar seleção",
             height=42,
@@ -140,7 +207,42 @@ class MainWindow:
             hover_color="#dde6f1",
             font=FONT_BUTTON,
             command=self.controller.limpar_selecao,
-        ).pack(side="left", fill="x", expand=True, padx=(5, 0))
+        )
+        self.btn_limpar.grid(row=0, column=1, sticky="ew", padx=(5, 0))
+
+        self.btn_rhid = ctk.CTkButton(
+            actions,
+            text="Conectar ao RHiD",
+            height=38,
+            fg_color="transparent",
+            border_width=1,
+            border_color=PRIMARY,
+            text_color=PRIMARY,
+            hover_color="#e8f1fc",
+            font=FONT_BUTTON,
+            command=self._abrir_dialogo_rhid,
+        )
+        self.btn_rhid.pack(fill="x", pady=(0, 10))
+
+        box_arquivo = ctk.CTkFrame(actions, fg_color=BG_BOX, corner_radius=14, border_width=1, border_color=BORDER)
+        box_arquivo.pack(fill="x", pady=(0, 10))
+        ctk.CTkLabel(
+            box_arquivo,
+            text="Arquivo selecionado",
+            text_color=FG_MUTED,
+            font=("Segoe UI", 10, "bold"),
+        ).pack(anchor="w", padx=14, pady=(12, 2))
+        self.label_arquivo = ctk.CTkLabel(
+            box_arquivo,
+            text="Nenhum arquivo selecionado",
+            text_color=FG_TEXT,
+            font=("Segoe UI", 12),
+            wraplength=360,
+            justify="left",
+            anchor="w",
+        )
+        self.label_arquivo.pack(fill="x", padx=14, pady=(0, 12))
+        self._vincular_quebra_texto(self.label_arquivo, box_arquivo, margem=28)
 
         filtro_box = ctk.CTkFrame(actions, fg_color=BG_BOX, corner_radius=12, border_width=1, border_color=BORDER)
         filtro_box.pack(fill="x", pady=(0, 10))
@@ -169,11 +271,17 @@ class MainWindow:
         self.var_saldo = ctk.BooleanVar(value=True)
         self.var_resumo = ctk.BooleanVar(value=True)
         self.var_ranking = ctk.BooleanVar(value=True)
-        ctk.CTkCheckBox(checks, text="Gerar aba SALDO", variable=self.var_saldo).pack(anchor="w", pady=2)
-        ctk.CTkCheckBox(checks, text="Gerar aba RESUMO", variable=self.var_resumo).pack(anchor="w", pady=2)
-        ctk.CTkCheckBox(checks, text="Gerar aba RANKING", variable=self.var_ranking).pack(anchor="w", pady=2)
+        self.check_saldo = ctk.CTkCheckBox(checks, text="Gerar aba SALDO", variable=self.var_saldo)
+        self.check_resumo = ctk.CTkCheckBox(checks, text="Gerar aba RESUMO", variable=self.var_resumo)
+        self.check_ranking = ctk.CTkCheckBox(checks, text="Gerar aba RANKING", variable=self.var_ranking)
+        self.check_saldo.pack(anchor="w", pady=2)
+        self.check_resumo.pack(anchor="w", pady=2)
+        self.check_ranking.pack(anchor="w", pady=2)
+        self.checkbox_saldo = self.check_saldo
+        self.checkbox_resumo = self.check_resumo
+        self.checkbox_ranking = self.check_ranking
 
-        ctk.CTkButton(
+        self.btn_processar = ctk.CTkButton(
             actions,
             text="Processar arquivo(s)",
             height=44,
@@ -181,7 +289,21 @@ class MainWindow:
             hover_color="#0d634d",
             font=FONT_BUTTON,
             command=self._processar_clicado,
-        ).pack(fill="x", pady=(0, 10))
+        )
+        self.btn_processar.pack(fill="x", pady=(0, 10))
+
+        self.btn_cancelar = ctk.CTkButton(
+            actions,
+            text="Cancelar",
+            height=36,
+            fg_color="#f9e5e3",
+            text_color=ERROR,
+            hover_color="#f2d2cf",
+            font=FONT_BUTTON,
+            command=self.controller.cancelar_processamento,
+            state="disabled",
+        )
+        self.btn_cancelar.pack(fill="x", pady=(0, 10))
 
         sec = ctk.CTkFrame(actions, fg_color="transparent")
         sec.pack(fill="x")
@@ -212,55 +334,128 @@ class MainWindow:
         )
         self.btn_abrir_pasta.pack(side="left", fill="x", expand=True, padx=(5, 0))
 
-        box_arquivo = ctk.CTkFrame(card, fg_color=BG_BOX, corner_radius=14, border_width=1, border_color=BORDER)
-        box_arquivo.pack(fill="x", padx=24, pady=(0, 10))
-        ctk.CTkLabel(box_arquivo, text="Arquivo selecionado", text_color=FG_MUTED, font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=14, pady=(12, 2))
-        self.label_arquivo = ctk.CTkLabel(
-            box_arquivo,
-            text="Nenhum arquivo selecionado",
-            text_color=FG_TEXT,
-            font=("Segoe UI", 12),
-            wraplength=720,
-            justify="left",
-        )
-        self.label_arquivo.pack(anchor="w", padx=14, pady=(0, 12))
-
-        box_saida = ctk.CTkFrame(card, fg_color=BG_BOX, corner_radius=14, border_width=1, border_color=BORDER)
-        box_saida.pack(fill="x", padx=24, pady=(0, 14))
+        box_saida = ctk.CTkFrame(actions, fg_color=BG_BOX, corner_radius=14, border_width=1, border_color=BORDER)
+        box_saida.pack(fill="x", pady=(10, 14))
         ctk.CTkLabel(box_saida, text="Pasta de saída", text_color=FG_MUTED, font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=14, pady=(12, 2))
         self.label_pasta_saida = ctk.CTkLabel(
             box_saida,
             text="Nenhuma pasta selecionada ainda.",
             text_color=FG_TEXT,
             font=("Segoe UI", 12),
-            wraplength=720,
+            wraplength=360,
             justify="left",
+            anchor="w",
         )
-        self.label_pasta_saida.pack(anchor="w", padx=14, pady=(0, 12))
+        self.label_pasta_saida.pack(fill="x", padx=14, pady=(0, 12))
+        self._vincular_quebra_texto(self.label_pasta_saida, box_saida, margem=28)
 
-        metricas = ctk.CTkFrame(card, fg_color="transparent")
-        metricas.pack(fill="x", padx=24, pady=(0, 14))
+        metricas = ctk.CTkFrame(actions, fg_color="transparent")
+        metricas.pack(fill="x", pady=(0, 14))
+        metricas.grid_columnconfigure(0, weight=1)
+        metricas.grid_columnconfigure(1, weight=1)
+        metricas.grid_columnconfigure(2, weight=1)
 
         self.metric_func = self._criar_box_metrica(metricas, "Funcionários", "0")
         self.metric_bt = self._criar_box_metrica(metricas, "Banco Total", "--:--")
         self.metric_bs = self._criar_box_metrica(metricas, "Banco Saldo", "--:--")
 
-        self.metric_func.pack(side="left", fill="both", expand=True, padx=(0, 6))
-        self.metric_bt.pack(side="left", fill="both", expand=True, padx=6)
-        self.metric_bs.pack(side="left", fill="both", expand=True, padx=(6, 0))
+        self.metric_func.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        self.metric_bt.grid(row=0, column=1, sticky="nsew", padx=6)
+        self.metric_bs.grid(row=0, column=2, sticky="nsew", padx=(6, 0))
 
-        tempo_box = ctk.CTkFrame(card, fg_color=BG_BOX, corner_radius=14, border_width=1, border_color=BORDER)
-        tempo_box.pack(fill="x", padx=24, pady=(0, 10))
+        tempo_box = ctk.CTkFrame(actions, fg_color=BG_BOX, corner_radius=14, border_width=1, border_color=BORDER)
+        tempo_box.pack(fill="x", pady=(0, 10))
         ctk.CTkLabel(tempo_box, text="Tempo de execução", text_color=FG_MUTED, font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=14, pady=(10, 2))
         self.label_tempo = ctk.CTkLabel(tempo_box, text="--", text_color=FG_TITLE, font=("Segoe UI", 14, "bold"))
         self.label_tempo.pack(anchor="w", padx=14, pady=(0, 10))
 
-        self.progress = ctk.CTkProgressBar(card, height=12)
-        self.progress.pack(fill="x", padx=24, pady=(0, 10))
+        self.progress = ctk.CTkProgressBar(actions, height=12)
+        self.progress.pack(fill="x", pady=(0, 10))
         self.progress.set(0)
 
-        self.label_status = ctk.CTkLabel(card, text="Aguardando arquivo.", text_color=FG_MUTED, font=FONT_STATUS, wraplength=760)
-        self.label_status.pack(fill="x", padx=24, pady=(0, 18))
+        self.label_status = ctk.CTkLabel(
+            actions,
+            text="Informação: Aguardando arquivo.",
+            text_color=FG_MUTED,
+            font=FONT_STATUS,
+            wraplength=360,
+            justify="left",
+            anchor="w",
+        )
+        self.label_status.pack(fill="x")
+        self._vincular_quebra_texto(self.label_status, actions, margem=4)
+
+        self.definir_estado(EstadoInterface.VAZIO, 0)
+
+    def _configurar_atalhos(self):
+        self.root.bind_all("<Control-o>", self._atalho_selecionar, add="+")
+        self.root.bind_all("<Control-O>", self._atalho_selecionar, add="+")
+        self.root.bind_all("<Control-Return>", self._atalho_processar, add="+")
+
+    @staticmethod
+    def _esta_habilitado(widget):
+        return str(widget.cget("state")) != "disabled"
+
+    @staticmethod
+    def _vincular_quebra_texto(label, parent, margem=0, minimo=180):
+        """Mantém textos longos dentro da largura realmente disponível."""
+
+        def atualizar_quebra(evento):
+            escala = ctk.ScalingTracker.get_widget_scaling(label)
+            largura_logica = (evento.width / escala) - margem
+            label.configure(wraplength=max(minimo, largura_logica))
+
+        parent.bind("<Configure>", atualizar_quebra, add="+")
+
+    def _atalho_selecionar(self, _evento=None):
+        if self._esta_habilitado(self.btn_selecionar):
+            self.controller.selecionar_arquivos()
+        return "break"
+
+    def _atalho_processar(self, _evento=None):
+        if self._esta_habilitado(self.btn_processar):
+            self._processar_clicado()
+        return "break"
+
+    def definir_estado(self, estado, total_arquivos=0):
+        """Aplica aos widgets a configuração visual do estado informado."""
+        if not isinstance(estado, EstadoInterface):
+            estado = EstadoInterface(estado)
+
+        configuracao = obter_configuracao_interface(estado, total_arquivos)
+        estado_selecionar = "normal" if configuracao.selecionar_habilitado else "disabled"
+        estado_limpar = "normal" if configuracao.limpar_habilitado else "disabled"
+        estado_processar = "normal" if configuracao.processar_habilitado else "disabled"
+        estado_cancelar = "normal" if configuracao.cancelar_habilitado else "disabled"
+        estado_configuracao = "normal" if configuracao.configuracao_habilitada else "disabled"
+
+        self.estado_interface = estado
+        if estado in (EstadoInterface.PROCESSANDO, EstadoInterface.CANCELANDO):
+            self.progress.configure(mode="indeterminate")
+            self.progress.start()
+        else:
+            self.progress.stop()
+            self.progress.configure(mode="determinate")
+            self.progress.set(self._valor_progresso)
+
+        self.btn_selecionar.configure(
+            text=configuracao.texto_selecionar,
+            state=estado_selecionar,
+        )
+        self.btn_limpar.configure(state=estado_limpar)
+        self.btn_processar.configure(
+            text=configuracao.texto_processar,
+            state=estado_processar,
+        )
+        self.btn_cancelar.configure(
+            text=configuracao.texto_cancelar,
+            state=estado_cancelar,
+        )
+        self.combo_departamento.configure(
+            state="readonly" if configuracao.configuracao_habilitada else "disabled"
+        )
+        for checkbox in (self.check_saldo, self.check_resumo, self.check_ranking):
+            checkbox.configure(state=estado_configuracao)
 
     def _processar_clicado(self):
         self.controller.processar(
@@ -269,6 +464,64 @@ class MainWindow:
             gerar_resumo=self.var_resumo.get(),
             gerar_ranking=self.var_ranking.get(),
         )
+
+    def _ao_tentar_fechar(self):
+        if self.controller.processamento_em_andamento:
+            messagebox.showwarning(
+                "Processamento em andamento",
+                "Aguarde o processamento terminar antes de fechar a janela.",
+                parent=self.root,
+            )
+            return
+
+        self.root.destroy()
+
+    def agendar_na_interface(self, atraso_ms, callback):
+        """Agenda uma chamada no loop principal da interface."""
+        return self.root.after(atraso_ms, callback)
+
+    def _abrir_dialogo_rhid(self):
+        if self._rhid_dialog is not None and self._rhid_dialog.winfo_exists():
+            self._rhid_dialog.focus_force()
+            return
+        self._rhid_dialog = RhidConnectionDialog(
+            self.root,
+            self.controller.conectar_rhid,
+            self.controller.gerar_relatorio_rhid,
+        )
+
+    def definir_conexao_rhid_ocupada(self, ocupado):
+        if self._rhid_dialog is not None and self._rhid_dialog.winfo_exists():
+            self._rhid_dialog.definir_ocupado(ocupado)
+
+    def exibir_catalogo_rhid(self, empresas, departamentos):
+        if self._rhid_dialog is not None and self._rhid_dialog.winfo_exists():
+            self._rhid_dialog.exibir_catalogo(empresas, departamentos)
+
+    def exibir_dominios_rhid(self, tenants):
+        if self._rhid_dialog is not None and self._rhid_dialog.winfo_exists():
+            self._rhid_dialog.exibir_dominios(tenants)
+
+    def definir_geracao_rhid_ocupada(self, ocupado):
+        if self._rhid_dialog is not None and self._rhid_dialog.winfo_exists():
+            self._rhid_dialog.definir_geracao_ocupada(ocupado)
+
+    def atualizar_progresso_rhid(self, valor, mensagem=""):
+        if self._rhid_dialog is not None and self._rhid_dialog.winfo_exists():
+            self._rhid_dialog.atualizar_progresso(valor, mensagem)
+
+    def exibir_sucesso_rhid(self, mensagem):
+        if self._rhid_dialog is not None and self._rhid_dialog.winfo_exists():
+            self._rhid_dialog.exibir_sucesso_geracao(mensagem)
+
+    def exibir_erro_rhid(self, mensagem):
+        if self._rhid_dialog is not None and self._rhid_dialog.winfo_exists():
+            self._rhid_dialog.exibir_erro(mensagem)
+            messagebox.showerror(
+                "Operação do RHiD não concluída",
+                mensagem,
+                parent=self._rhid_dialog,
+            )
 
     def _criar_box_metrica(self, parent, titulo, valor):
         box = ctk.CTkFrame(parent, fg_color=BG_BOX, corner_radius=14, border_width=1, border_color=BORDER)
@@ -309,10 +562,23 @@ class MainWindow:
             cor = WARNING
         elif tipo == "error":
             cor = ERROR
-        self.label_status.configure(text=texto, text_color=cor)
+
+        prefixos = {
+            "info": "Informação",
+            "success": "Sucesso",
+            "warning": "Atenção",
+            "error": "Erro",
+        }
+        prefixo = prefixos.get(tipo, prefixos["info"])
+        texto = str(texto)
+        prefixos_existentes = tuple(f"{valor}:" for valor in prefixos.values())
+        texto_acessivel = texto if texto.startswith(prefixos_existentes) else f"{prefixo}: {texto}"
+
+        self.label_status.configure(text=texto_acessivel, text_color=cor)
         self.root.update_idletasks()
 
     def atualizar_progresso(self, valor):
+        self._valor_progresso = valor
         self.progress.set(valor)
         self.root.update_idletasks()
 

@@ -1,0 +1,5 @@
+﻿Nome do funcionário;Número de matrícula;Nome do departamento;CPF do funcionário;Total Normais;Total Trabalhado;Horas Previstas;Dia Falta;Falta e Atraso;Abono;Extras Total;Banco Total;Banco Saldo
+Ana Teste;MAT-0001;Operações;000.000.000-00;40:00;42:00;40:00;;;00:00;02:00;26:30;09:15
+Ana Teste;MAT-0002;Operações;111.111.111-11;40:00;30:00;40:00;1;10:00;00:00;00:00;-02:45;-10:30
+Bruno Exemplo;MAT-0003;Financeiro;222.222.222-22;40:00;41:15;40:00;;;00:00;01:15;;01:15
+Carla Fictícia;MAT-0004;Financeiro;333.333.333-33;40:00;40:30;40:00;;;00:00;00:30;00:30;

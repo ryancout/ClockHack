@@ -3,9 +3,7 @@ import os
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from app.core.config import DATA_DIR, HISTORY_FILE, MAX_HISTORICO
-
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+from app.core.config import HISTORY_FILE, MAX_HISTORICO
 
 
 def _load():
@@ -19,6 +17,7 @@ def _load():
 
 
 def _save(data):
+    HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
     fd, temp_path = tempfile.mkstemp(prefix=HISTORY_FILE.stem + "_", suffix=".tmp", dir=str(HISTORY_FILE.parent))
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
