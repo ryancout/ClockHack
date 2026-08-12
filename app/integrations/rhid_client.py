@@ -8,6 +8,7 @@ import time
 import unicodedata
 from dataclasses import dataclass
 from datetime import date
+from collections.abc import Iterable
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -20,9 +21,9 @@ DEFAULT_BASE_URL = "https://rhid.com.br/v2/api.svc"
 DEFAULT_SSO_URL = "https://sso-backend.controlid.com.br:5000/api"
 DEFAULT_WEB_URL = "https://rhid.com.br/v2"
 
-# Contrato do CSV que já é aceito e testado pelo ClockHack. Os nomes internos
+# Contrato do CSV aceito e testado pelo FAS Jornada. Os nomes internos
 # são obtidos do catálogo oficial exportableAcjefAndPersonColumns.
-_COLUNAS_CSV_CLOCKHACK = (
+_COLUNAS_CSV_FAS_JORNADA = (
     ("Person", "name", "Nome do funcionário"),
     ("Person", "registration", "Número de matrícula"),
     ("Department", "name", "Nome do departamento"),
@@ -87,7 +88,7 @@ class RhidPerson:
 
 
 class RhidClient:
-    """Consome somente endpoints de leitura necessários ao ClockHack."""
+    """Consome somente endpoints de leitura necessários ao FAS Jornada."""
 
     def __init__(
         self,
@@ -298,11 +299,22 @@ class RhidClient:
     def listar_ids_pessoas_ativas(
         self,
         company_id: int | None = None,
-        department_id: int | None = None,
+        department_id: int | Iterable[int] | None = None,
     ) -> tuple[int, ...]:
         """Replica o filtro server-side usado pelo RHiD antes do CSV customizado."""
 
-        registros = self._registros_pessoas_ativas(company_id, department_id)
+        ids_departamentos = self._normalizar_ids_departamentos(department_id)
+        if len(ids_departamentos) > 1:
+            registros = []
+            for identificador in ids_departamentos:
+                registros.extend(
+                    self._registros_pessoas_ativas(company_id, identificador)
+                )
+        else:
+            registros = self._registros_pessoas_ativas(
+                company_id,
+                ids_departamentos[0] if ids_departamentos else None,
+            )
         return tuple(
             dict.fromkeys(
                 int(item["id"])
@@ -344,13 +356,18 @@ class RhidClient:
     def _registros_pessoas_ativas(
         self,
         company_id: int | None = None,
-        department_id: int | None = None,
+        department_id: int | Iterable[int] | None = None,
     ) -> list[dict]:
         parametros = {}
         if company_id is not None:
             parametros["companies"] = int(company_id)
-        if department_id is not None:
-            parametros["departments"] = int(department_id)
+        ids_departamentos = self._normalizar_ids_departamentos(department_id)
+        if ids_departamentos:
+            parametros["departments"] = (
+                ids_departamentos[0]
+                if len(ids_departamentos) == 1
+                else list(ids_departamentos)
+            )
         return self._records(
             self._request(
                 "GET",
@@ -359,6 +376,32 @@ class RhidClient:
                 base_url=self.web_url,
             )
         )
+
+    @staticmethod
+    def _normalizar_ids_departamentos(
+        department_id: int | Iterable[int] | None,
+    ) -> tuple[int, ...]:
+        if department_id is None:
+            return ()
+        if isinstance(department_id, (str, bytes)):
+            valores = (department_id,)
+        else:
+            try:
+                valores = tuple(department_id)
+            except TypeError:
+                valores = (department_id,)
+
+        ids = []
+        for valor in valores:
+            try:
+                identificador = int(valor)
+            except (TypeError, ValueError) as exc:
+                raise RhidApiError("Selecione setores válidos do RHiD.") from exc
+            if identificador <= 0:
+                raise RhidApiError("Selecione setores válidos do RHiD.")
+            if identificador not in ids:
+                ids.append(identificador)
+        return tuple(ids)
 
     @staticmethod
     def _id_relacionado(item: dict, campo: str, alias: str, objeto: str) -> int | None:
@@ -380,8 +423,6 @@ class RhidClient:
         fim = self._data_iso(data_final)
         if fim < inicio:
             raise RhidApiError("A data final não pode ser anterior à data inicial.")
-        if (fim - inicio).days > 90:
-            raise RhidApiError("O período da consulta ao RHiD não pode ultrapassar 90 dias.")
 
         resposta = self._request(
             "GET",
@@ -404,7 +445,7 @@ class RhidClient:
     def gerar_relatorio_csv(
         self,
         company_id: int | None,
-        department_id: int | None,
+        department_id: int | Iterable[int] | None,
         data_inicial: date | str,
         data_final: date | str,
         ao_progresso: Callable[[int], None] | None = None,
@@ -415,14 +456,13 @@ class RhidClient:
         inicio, fim = self._validar_periodo_relatorio(data_inicial, data_final)
         if company_id is not None and int(company_id) <= 0:
             raise RhidApiError("Selecione uma empresa válida do RHiD.")
-        if department_id is not None and int(department_id) <= 0:
-            raise RhidApiError("Selecione um setor válido do RHiD.")
+        ids_departamentos = self._normalizar_ids_departamentos(department_id)
 
         propriedades = self._propriedades_relatorio()
         colunas_acjef, informacoes_pessoa = self._separar_colunas(propriedades)
         formato_horas = self._formato_horas()
         reportar = ao_progresso or (lambda _valor: None)
-        ids_pessoas = self.listar_ids_pessoas_ativas(company_id, department_id)
+        ids_pessoas = self.listar_ids_pessoas_ativas(company_id, ids_departamentos)
         if not ids_pessoas:
             raise RhidApiError("Nenhum funcionário ativo foi encontrado nesse escopo.")
         logger.info(
@@ -439,7 +479,7 @@ class RhidClient:
             "fontName": "Helvetica",
             "listIdStr": list(ids_pessoas),
             "listCostCenterStr": [],
-            "listDepartmentStr": [int(department_id)] if department_id is not None else [],
+            "listDepartmentStr": list(ids_departamentos),
             "listPersonRoleStr": [],
             "listCompanyStr": [int(company_id)] if company_id is not None else [],
             "listShiftStr": [],
@@ -559,7 +599,7 @@ class RhidClient:
 
         selecionadas = []
         ausentes = []
-        for classe, propriedade, cabecalho in _COLUNAS_CSV_CLOCKHACK:
+        for classe, propriedade, cabecalho in _COLUNAS_CSV_FAS_JORNADA:
             # O nome interno varia entre layouts do RHiD. O cabeçalho é o
             # contrato do CSV; o propertyName conhecido fica como fallback.
             item = por_cabecalho.get(
@@ -672,8 +712,6 @@ class RhidClient:
         fim = self._data_iso(data_final)
         if fim < inicio:
             raise RhidApiError("A data final não pode ser anterior à data inicial.")
-        if (fim - inicio).days > 31:
-            raise RhidApiError("O relatório do RHiD permite no máximo 31 dias.")
         return inicio, fim
 
     @staticmethod
@@ -711,7 +749,7 @@ class RhidClient:
 
         url = f"{(base_url or self.base_url).rstrip('/')}{path}"
         if params:
-            url = f"{url}?{urlencode(params)}"
+            url = f"{url}?{urlencode(params, doseq=True)}"
         headers = {"Accept": "application/json"}
         headers.update(extra_headers or {})
         data = None
@@ -743,7 +781,7 @@ class RhidClient:
             raise RhidApiError("Conecte-se ao RHiD antes de consultar os dados.")
         url = f"{(base_url or self.base_url).rstrip('/')}{path}"
         if params:
-            url = f"{url}?{urlencode(params)}"
+            url = f"{url}?{urlencode(params, doseq=True)}"
         headers = {
             "Accept": "application/vnd.ms-excel, application/octet-stream, */*",
             "Authorization": f"Bearer {self._access_token}",

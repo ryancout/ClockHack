@@ -1,4 +1,4 @@
-"""Objetos e politicas do dominio do ClockHack."""
+"""Objetos e políticas do domínio do FAS Jornada."""
 
 from app.domain.identity import obter_final_matricula
 from app.domain.models import RegistroFuncionario

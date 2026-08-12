@@ -103,15 +103,16 @@ def test_login_e_catalogos_usam_token_sem_guardar_senha():
     assert not hasattr(client, "password")
 
 
-def test_apuracao_decodifica_json_serializado_e_valida_periodo():
+def test_apuracao_decodifica_json_serializado_sem_limite_local_de_periodo():
     client, _api = client_autenticado()
 
     apuracao = client.obter_apuracao(100, date(2026, 7, 1), "2026-07-31")
 
     assert apuracao[0]["totalHorasTrabalhadas"] == 480
 
-    with pytest.raises(RhidApiError, match="90 dias"):
-        client.obter_apuracao(100, "2026-01-01", "2026-05-01")
+    apuracao_longa = client.obter_apuracao(100, "2026-01-01", "2026-05-01")
+
+    assert apuracao_longa[0]["totalHorasTrabalhadas"] == 480
 
 
 def test_cliente_exige_https_e_autenticacao():
@@ -391,7 +392,7 @@ def test_gera_csv_oficial_com_filtros_colunas_polling_e_download():
     assert "departments=12" in requisicao_pessoas.full_url
 
 
-def test_relatorio_exige_as_colunas_do_contrato_e_limita_periodo():
+def test_relatorio_exige_as_colunas_do_contrato():
     def api(request, timeout=None):
         if request.full_url.endswith("/api/auth/login"):
             return FakeResponse({"accessToken": "token"})
@@ -406,8 +407,6 @@ def test_relatorio_exige_as_colunas_do_contrato_e_limita_periodo():
 
     with pytest.raises(RhidApiError, match="Banco Saldo"):
         cliente.gerar_relatorio_csv(1, None, "2026-08-01", "2026-08-10")
-    with pytest.raises(RhidApiError, match="31 dias"):
-        cliente.gerar_relatorio_csv(1, None, "2026-01-01", "2026-02-15")
 
 
 def test_relatorio_interrompe_quando_rhid_informa_zero_pessoas():
@@ -449,6 +448,30 @@ def test_ids_de_pessoas_sao_filtrados_no_servidor_e_deduplicados():
     assert cliente.listar_ids_pessoas_ativas(7) == (10, 11)
     assert "companies=7" in requisicoes[-1]
     assert "departments=" not in requisicoes[-1]
+
+
+def test_ids_de_pessoas_aceitam_varios_setores_e_unem_resultados():
+    requisicoes = []
+
+    def api(request, timeout=None):
+        requisicoes.append(request.full_url)
+        if request.full_url.endswith("/api/auth/login"):
+            return FakeResponse({"accessToken": "token"})
+        if "departments=12" in request.full_url:
+            return FakeResponse({"data": [{"id": 10}, {"id": 11}]})
+        if "departments=13" in request.full_url:
+            return FakeResponse({"data": [{"id": 11}, {"id": 12}]})
+        raise AssertionError(request.full_url)
+
+    cliente = RhidClient(opener=api)
+    cliente.login("usuario@empresa.com", "segredo")
+
+    assert cliente.listar_ids_pessoas_ativas(7, (12, 13, 12)) == (10, 11, 12)
+    consultas = [url for url in requisicoes if "/customerdb/person.svc/a_ativo?" in url]
+    assert len(consultas) == 2
+    assert all("companies=7" in url for url in consultas)
+    assert any("departments=12" in url for url in consultas)
+    assert any("departments=13" in url for url in consultas)
 
 
 def test_catalogo_mantem_todos_os_setores_com_funcionarios_ativos():

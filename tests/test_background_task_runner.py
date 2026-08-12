@@ -160,7 +160,7 @@ def test_thread_nao_daemon_protege_gravacao_em_andamento() -> None:
     agendador.executar_ate(lambda: not runner.ativo)
 
     assert argumentos["daemon"] is False
-    assert argumentos["name"] == "ClockHackWorker"
+    assert argumentos["name"] == "FASJornadaWorker"
 
 
 def test_falha_no_callback_de_progresso_nao_deixa_runner_travado() -> None:

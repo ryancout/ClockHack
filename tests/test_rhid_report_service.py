@@ -58,6 +58,32 @@ def test_relatorio_rhid_reutiliza_pipeline_e_remove_csv_temporario(tmp_path):
     assert workbook.sheetnames == ["Sheet", "SALDO", "RANKING", "RESUMO"]
 
 
+def test_relatorio_rhid_respeita_abas_opcionais(tmp_path):
+    cliente = FakeRhidClient(FIXTURE.read_bytes())
+    saida = tmp_path / "relatorio_rhid_sem_abas.xlsx"
+    plano = RhidReportPlan(
+        company_id=7,
+        department_id=(12, 13),
+        company_label="Projeto A",
+        department_label="2 setores selecionados",
+        data_inicial=date(2026, 8, 1),
+        data_final=date(2026, 8, 11),
+        caminho_saida=str(saida),
+        gerar_saldo=False,
+        gerar_resumo=False,
+        gerar_ranking=False,
+    )
+
+    resultado = processar_relatorio_rhid(cliente, plano)
+
+    assert cliente.chamada[1] == (12, 13)
+    assert resultado["gerou_saldo"] is False
+    assert resultado["gerou_resumo"] is False
+    assert resultado["gerou_ranking"] is False
+    workbook = load_workbook(saida, read_only=True)
+    assert workbook.sheetnames == ["Sheet"]
+
+
 def test_relatorio_rhid_recusa_matricula_duplicada_sem_somar_saldos(tmp_path):
     cabecalho = (
         "Nome do funcionário;Número de matrícula;Nome do departamento;"

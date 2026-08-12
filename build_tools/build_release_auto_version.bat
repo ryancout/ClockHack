@@ -4,7 +4,7 @@ setlocal
 
 cd /d "%~dp0\.."
 
-set APP_NAME=ProcessadorPlanilhasFAS
+set APP_NAME=FASJornada
 
 echo.
 set /p VERSION=Digite a versao (ex: 6.2.1): 
@@ -26,7 +26,7 @@ echo ================================
 echo.
 
 echo [1/7] Atualizando version.py...
-echo APP_NAME = "Processador de Planilhas FAS" > app\core\version.py
+echo APP_NAME = "FAS Jornada" > app\core\version.py
 echo APP_VERSION = "%VERSION%" >> app\core\version.py
 
 echo [2/7] Atualizando version_info.txt...
@@ -48,11 +48,11 @@ echo       StringTable(
 echo         '040904B0',
 echo         [
 echo           StringStruct('CompanyName', 'FAS'),
-echo           StringStruct('FileDescription', 'Processador de Planilhas de Horas'),
+echo           StringStruct('FileDescription', 'Relatório e Análise de Jornada'),
 echo           StringStruct('FileVersion', '%VERSION%'),
-echo           StringStruct('InternalName', 'ProcessadorPlanilhasFAS'),
-echo           StringStruct('OriginalFilename', 'ProcessadorPlanilhasFAS.exe'),
-echo           StringStruct('ProductName', 'Processador Planilhas FAS'),
+echo           StringStruct('InternalName', 'FASJornada'),
+echo           StringStruct('OriginalFilename', 'FASJornada.exe'),
+echo           StringStruct('ProductName', 'FAS Jornada'),
 echo           StringStruct('ProductVersion', '%VERSION%')
 echo         ]
 echo       )

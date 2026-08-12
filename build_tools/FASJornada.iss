@@ -1,8 +1,8 @@
 ; Inno Setup script
-#define MyAppName "Processador de Planilhas FAS"
-#define MyAppVersion "6.3.1"
+#define MyAppName "FAS Jornada"
+#define MyAppVersion "6.4"
 #define MyAppPublisher "FAS"
-#define MyAppExeName "ProcessadorPlanilhasFAS.exe"
+#define MyAppExeName "FASJornada.exe"
 
 [Setup]
 AppId={{A8E7A9B6-9C32-49D2-A0C9-7E4C11223344}
@@ -13,7 +13,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 OutputDir=..\dist
-OutputBaseFilename=ProcessadorPlanilhasFAS_Setup_{#MyAppVersion}
+OutputBaseFilename=FASJornada_Setup_{#MyAppVersion}
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern

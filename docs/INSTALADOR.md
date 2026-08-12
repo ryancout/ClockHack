@@ -4,7 +4,7 @@ O projeto inclui:
 
 - `build_tools/gerar_exe.bat`
 - `build_tools/gerar_instalador.bat`
-- `build_tools/ProcessadorPlanilhasFAS.iss`
+- `build_tools/FASJornada.iss`
 - `app/assets/icon.ico`
 - `main.spec`
 
@@ -19,7 +19,7 @@ build_tools\gerar_exe.bat
 Apos a geracao, o executavel sera criado em:
 
 ```bat
-dist\ProcessadorPlanilhasFAS.exe
+dist\FASJornada.exe
 ```
 
 ## Como gerar o instalador
@@ -40,5 +40,5 @@ build_tools\gerar_instalador.bat
 O instalador padrao do Windows sera gerado em:
 
 ```bat
-dist\ProcessadorPlanilhasFAS_Setup.exe
+dist\FASJornada_Setup_X.X.X.exe
 ```

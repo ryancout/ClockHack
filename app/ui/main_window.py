@@ -1,471 +1,420 @@
+"""Janela principal e navegação em páginas do FAS Jornada."""
+
+from __future__ import annotations
+
+import ctypes
 import os
 import sys
-import ctypes
-from tkinter import messagebox
+import webbrowser
+from pathlib import Path
+from tkinter import Canvas, messagebox
 
 import customtkinter as ctk
-from PIL import Image
+from PIL import Image, ImageOps, ImageTk
 
 from app.controllers.main_controller import MainController
 from app.core.config import (
     APP_GEOMETRY,
     APP_TITLE,
     BG_APP,
-    BG_BOX,
-    BG_CARD,
-    BORDER,
-    ERROR,
-    FG_MUTED,
-    FG_TEXT,
-    FG_TITLE,
-    FONT_BUTTON,
-    FONT_METRIC_TITLE,
-    FONT_METRIC_VALUE,
-    FONT_STATUS,
-    FONT_SUBTITLE,
-    FONT_TITLE,
     MIN_HEIGHT,
     MIN_WIDTH,
-    PRIMARY,
-    SUCCESS,
-    WARNING,
 )
+from app.core.logger import logger
 from app.core.version import APP_VERSION
+from app.services.rhid_credentials_service import (
+    CredentialStorageError,
+    RhidCredentialService,
+)
+from app.ui.navigation import PaginaInterface
+from app.ui.report_pages import CsvPage, HomePage, ProcessingPage, SuccessPage
+from app.ui.rhid_page import (
+    ETAPA_DOMINIO,
+    ETAPA_ESCOPO,
+    ETAPA_LOGIN,
+    RHID_FORGOT_PASSWORD_URL,
+    RhidPage,
+)
 from app.ui.view_state import EstadoInterface, obter_configuracao_interface
-from app.ui.rhid_dialog import RhidConnectionDialog
+
 
 ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
 
-def resource_path(relative_path):
-    try:
-        base_path = sys._MEIPASS
-    except Exception:
-        base_path = os.path.abspath(".")
-    return os.path.join(base_path, relative_path)
+def resource_path(relative_path: str) -> str:
+    """Resolve recursos tanto no código-fonte quanto no executável empacotado."""
+
+    base_path = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2]))
+    return str(base_path / relative_path)
 
 
 class MainWindow:
+    """Coordena as páginas sem misturar regras de relatório com widgets."""
+
     def __init__(self):
         self.root = ctk.CTk()
-
         try:
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("fas.processador.planilhas")
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+                "fas.jornada"
+            )
         except Exception:
             pass
 
+        self._configurar_janela()
+        self.estado_interface = EstadoInterface.VAZIO
+        self.pagina_atual = PaginaInterface.INICIO
+        self._fluxo_atual: str | None = None
+        self._valor_progresso = 0.0
+        self._status_atual = "Aguardando uma origem de dados."
+        self._status_tipo = "info"
+        self._metricas = (0, "--:--", "--:--")
+        self._pasta_saida = "Nenhuma pasta selecionada ainda."
+        self._tempo_execucao = None
+        self._abrir_arquivo_habilitado = False
+        self._abrir_pasta_habilitado = False
+        self._credencial_pendente: tuple[str, str, str, bool] | None = None
+        self._erro_credencial: str | None = None
+        self._imagens = []
+        self._footer_source = None
+        self._footer_photo = None
+
+        self._credenciais = RhidCredentialService()
+        self.controller = MainController(self)
+        self._montar_layout()
+        self._configurar_atalhos()
+        self._carregar_credenciais_salvas()
+        self.controller.iniciar()
+
+    def _configurar_janela(self) -> None:
         icone = resource_path("app/assets/icon.ico")
         if os.path.exists(icone):
             try:
                 self.root.iconbitmap(icone)
             except Exception:
-                try:
-                    self.root.wm_iconbitmap(icone)
-                except Exception:
-                    pass
+                logger.debug("Não foi possível aplicar o ícone da janela.")
         self.root.title(APP_TITLE)
-        self.root.minsize(MIN_WIDTH, MIN_HEIGHT)
         self._aplicar_geometria_inicial()
         self.root.configure(fg_color=BG_APP)
-        self.root.grid_rowconfigure(0, weight=1)
         self.root.grid_columnconfigure(0, weight=1)
+        self.root.grid_rowconfigure(1, weight=1)
         self.root.protocol("WM_DELETE_WINDOW", self._ao_tentar_fechar)
 
-        self.controller = MainController(self)
-        self.logo_ref = None
-        self.estado_interface = EstadoInterface.VAZIO
-        self._valor_progresso = 0.0
-        self._rhid_dialog = None
-
-        self._montar_layout()
-        self._configurar_atalhos()
-        self.controller.iniciar()
-
-    def _aplicar_geometria_inicial(self):
-        """Centraliza a janela e limita sua geometria inicial à tela disponível."""
+    def _aplicar_geometria_inicial(self) -> None:
         try:
-            geometria_base = APP_GEOMETRY.split("+", 1)[0]
-            largura_texto, altura_texto = geometria_base.lower().split("x", 1)
+            largura_texto, altura_texto = APP_GEOMETRY.split("+", 1)[0].split("x")
             largura_desejada = max(int(largura_texto), MIN_WIDTH)
             altura_desejada = max(int(altura_texto), MIN_HEIGHT)
         except (AttributeError, TypeError, ValueError):
-            largura_desejada = MIN_WIDTH
-            altura_desejada = MIN_HEIGHT
+            largura_desejada, altura_desejada = MIN_WIDTH, MIN_HEIGHT
 
         largura_tela = max(1, self.root.winfo_screenwidth())
         altura_tela = max(1, self.root.winfo_screenheight())
-        largura = min(largura_desejada, largura_tela)
-        altura = min(altura_desejada, altura_tela)
-        posicao_x = max(0, (largura_tela - largura) // 2)
-        posicao_y = max(0, (altura_tela - altura) // 2)
+        escala = max(0.5, float(ctk.ScalingTracker.get_window_scaling(self.root)))
+        # O CustomTkinter recebe geometria lógica e a converte para pixels.
+        # Reservamos barra de tarefas/moldura antes dessa conversão.
+        largura_disponivel = max(1, int((largura_tela - 32) / escala))
+        altura_disponivel = max(1, int((altura_tela - 80) / escala))
+        largura_minima = min(MIN_WIDTH, largura_disponivel)
+        altura_minima = min(MIN_HEIGHT, altura_disponivel)
+        self.root.minsize(largura_minima, altura_minima)
 
+        largura = min(max(largura_desejada, largura_minima), largura_disponivel)
+        altura = min(max(altura_desejada, altura_minima), altura_disponivel)
+        largura_fisica = round(largura * escala)
+        altura_fisica = round(altura * escala)
+        posicao_x = max(0, (largura_tela - largura_fisica) // 2)
+        posicao_y = max(0, (altura_tela - altura_fisica) // 2)
         self.root.geometry(f"{largura}x{altura}+{posicao_x}+{posicao_y}")
 
-    def _montar_layout(self):
-        container = ctk.CTkFrame(self.root, fg_color=BG_APP, corner_radius=0)
-        container.grid(row=0, column=0, sticky="nsew", padx=18, pady=18)
-        container.grid_rowconfigure(0, weight=1)
-        container.grid_columnconfigure(0, weight=3, minsize=560)
-        container.grid_columnconfigure(1, weight=1, minsize=280)
+    def _montar_layout(self) -> None:
+        self._montar_cabecalho()
 
-        esquerdo = ctk.CTkScrollableFrame(
-            container,
-            fg_color=BG_APP,
-            corner_radius=0,
-            scrollbar_button_color=BORDER,
-            scrollbar_button_hover_color=FG_MUTED,
+        self.content_host = ctk.CTkFrame(
+            self.root, fg_color=BG_APP, corner_radius=0
         )
-        esquerdo.grid(row=0, column=0, sticky="nsew", padx=(0, 10))
-        esquerdo.grid_columnconfigure(0, weight=1)
+        self.content_host.grid(row=1, column=0, sticky="nsew", padx=18)
+        self.content_host.grid_rowconfigure(0, weight=1)
+        self.content_host.grid_columnconfigure(0, weight=1)
+        # Páginas roláveis não podem aumentar a geometria da janela e ocultar
+        # o cabeçalho/rodapé; elas devem se adaptar ao espaço disponível.
+        self.content_host.grid_propagate(False)
 
-        direito = ctk.CTkFrame(container, fg_color=BG_APP, corner_radius=0)
-        direito.grid(row=0, column=1, sticky="nsew")
-
-        self._montar_card_principal(esquerdo)
-        self._montar_lateral(direito)
-
-    def _montar_card_principal(self, parent):
-        card = ctk.CTkFrame(parent, fg_color=BG_CARD, corner_radius=20, border_width=1, border_color=BORDER)
-        card.grid(row=0, column=0, sticky="nsew")
-
-        header = ctk.CTkFrame(card, fg_color="transparent")
-        header.pack(fill="x", padx=24, pady=(20, 12))
-        header.grid_columnconfigure(1, weight=1)
-
-        logo_path = resource_path("app/assets/logo.png")
-        if os.path.exists(logo_path):
-            try:
-                logo = ctk.CTkImage(light_image=Image.open(logo_path), size=(112, 57))
-                ctk.CTkLabel(header, image=logo, text="").grid(
-                    row=0,
-                    column=0,
-                    sticky="nw",
-                    padx=(0, 18),
-                )
-                self.logo_ref = logo
-            except Exception:
-                pass
-
-        textos_header = ctk.CTkFrame(header, fg_color="transparent")
-        textos_header.grid(row=0, column=1, sticky="nsew")
-        textos_header.grid_columnconfigure(0, weight=1)
-
-        ctk.CTkLabel(
-            textos_header,
-            text="Processador de Planilhas",
-            font=FONT_TITLE,
-            text_color=FG_TITLE,
-            anchor="w",
-        ).grid(row=0, column=0, sticky="ew")
-        label_subtitulo = ctk.CTkLabel(
-            textos_header,
-            text="Selecione arquivo(s) CSV, escolha o departamento, marque as abas desejadas, processe e salve a saída em Excel.",
-            font=FONT_SUBTITLE,
-            text_color=FG_MUTED,
-            wraplength=360,
-            justify="left",
-            anchor="w",
+        self.home_page = HomePage(
+            self.content_host,
+            self._abrir_fluxo_csv,
+            self._abrir_fluxo_rhid,
         )
-        label_subtitulo.grid(row=1, column=0, sticky="ew", pady=(2, 3))
-        self._vincular_quebra_texto(label_subtitulo, textos_header, margem=4)
-
-        self.label_versao = ctk.CTkLabel(
-            textos_header,
-            text="",
-            font=("Segoe UI", 10, "bold"),
-            text_color=PRIMARY,
-            anchor="w",
+        self.csv_page = CsvPage(
+            self.content_host,
+            self._voltar_para_inicio,
+            self.controller.selecionar_arquivos,
+            self.controller.limpar_selecao,
+            self.controller.processar,
         )
-        self.label_versao.grid(row=2, column=0, sticky="w")
-
-        actions = ctk.CTkFrame(card, fg_color="transparent")
-        actions.pack(fill="x", padx=24, pady=(0, 18))
-
-        top_actions = ctk.CTkFrame(actions, fg_color="transparent")
-        top_actions.pack(fill="x", pady=(0, 10))
-        top_actions.grid_columnconfigure(0, weight=1)
-        top_actions.grid_columnconfigure(1, weight=1)
-
-        self.btn_selecionar = ctk.CTkButton(
-            top_actions,
-            text="Selecionar arquivo(s)",
-            height=42,
-            fg_color=PRIMARY,
-            hover_color="#0955af",
-            font=FONT_BUTTON,
-            command=self.controller.selecionar_arquivos,
+        self.rhid_page = RhidPage(
+            self.content_host,
+            self._conectar_rhid,
+            self.controller.gerar_relatorio_rhid,
+            self._voltar_para_inicio,
+            self._abrir_recuperacao_senha,
         )
-        self.btn_selecionar.grid(row=0, column=0, sticky="ew", padx=(0, 5))
-
-        self.btn_limpar = ctk.CTkButton(
-            top_actions,
-            text="Limpar seleção",
-            height=42,
-            fg_color="#e9eef5",
-            text_color=FG_TEXT,
-            hover_color="#dde6f1",
-            font=FONT_BUTTON,
-            command=self.controller.limpar_selecao,
+        self.processing_page = ProcessingPage(
+            self.content_host,
+            self.controller.cancelar_processamento,
         )
-        self.btn_limpar.grid(row=0, column=1, sticky="ew", padx=(5, 0))
-
-        self.btn_rhid = ctk.CTkButton(
-            actions,
-            text="Conectar ao RHiD",
-            height=38,
-            fg_color="transparent",
-            border_width=1,
-            border_color=PRIMARY,
-            text_color=PRIMARY,
-            hover_color="#e8f1fc",
-            font=FONT_BUTTON,
-            command=self._abrir_dialogo_rhid,
+        self.success_page = SuccessPage(
+            self.content_host,
+            self.controller.abrir_arquivo_gerado,
+            self.controller.abrir_pasta_gerada,
+            self._gerar_outro_relatorio,
+            self._voltar_para_inicio,
         )
-        self.btn_rhid.pack(fill="x", pady=(0, 10))
+        self._paginas = {
+            PaginaInterface.INICIO: self.home_page,
+            PaginaInterface.CSV: self.csv_page,
+            PaginaInterface.RHID_LOGIN: self.rhid_page,
+            PaginaInterface.RHID_DOMINIO: self.rhid_page,
+            PaginaInterface.RHID_ESCOPO: self.rhid_page,
+            PaginaInterface.PROCESSAMENTO: self.processing_page,
+            PaginaInterface.SUCESSO: self.success_page,
+        }
 
-        box_arquivo = ctk.CTkFrame(actions, fg_color=BG_BOX, corner_radius=14, border_width=1, border_color=BORDER)
-        box_arquivo.pack(fill="x", pady=(0, 10))
-        ctk.CTkLabel(
-            box_arquivo,
-            text="Arquivo selecionado",
-            text_color=FG_MUTED,
-            font=("Segoe UI", 10, "bold"),
-        ).pack(anchor="w", padx=14, pady=(12, 2))
-        self.label_arquivo = ctk.CTkLabel(
-            box_arquivo,
-            text="Nenhum arquivo selecionado",
-            text_color=FG_TEXT,
-            font=("Segoe UI", 12),
-            wraplength=360,
-            justify="left",
-            anchor="w",
-        )
-        self.label_arquivo.pack(fill="x", padx=14, pady=(0, 12))
-        self._vincular_quebra_texto(self.label_arquivo, box_arquivo, margem=28)
-
-        filtro_box = ctk.CTkFrame(actions, fg_color=BG_BOX, corner_radius=12, border_width=1, border_color=BORDER)
-        filtro_box.pack(fill="x", pady=(0, 10))
-        ctk.CTkLabel(
-            filtro_box,
-            text="Filtro por nome do departamento",
-            text_color=FG_MUTED,
-            font=("Segoe UI", 10, "bold"),
-        ).pack(anchor="w", padx=14, pady=(10, 4))
-
-        self.combo_departamento = ctk.CTkComboBox(filtro_box, values=["Todos"], height=36)
-        self.combo_departamento.pack(fill="x", padx=14, pady=(0, 12))
-        self.combo_departamento.set("Todos")
-
-        opcoes_box = ctk.CTkFrame(actions, fg_color=BG_BOX, corner_radius=12, border_width=1, border_color=BORDER)
-        opcoes_box.pack(fill="x", pady=(0, 10))
-        ctk.CTkLabel(
-            opcoes_box,
-            text="Abas adicionais",
-            text_color=FG_MUTED,
-            font=("Segoe UI", 10, "bold"),
-        ).pack(anchor="w", padx=14, pady=(10, 4))
-
-        checks = ctk.CTkFrame(opcoes_box, fg_color="transparent")
-        checks.pack(fill="x", padx=12, pady=(0, 10))
-        self.var_saldo = ctk.BooleanVar(value=True)
-        self.var_resumo = ctk.BooleanVar(value=True)
-        self.var_ranking = ctk.BooleanVar(value=True)
-        self.check_saldo = ctk.CTkCheckBox(checks, text="Gerar aba SALDO", variable=self.var_saldo)
-        self.check_resumo = ctk.CTkCheckBox(checks, text="Gerar aba RESUMO", variable=self.var_resumo)
-        self.check_ranking = ctk.CTkCheckBox(checks, text="Gerar aba RANKING", variable=self.var_ranking)
-        self.check_saldo.pack(anchor="w", pady=2)
-        self.check_resumo.pack(anchor="w", pady=2)
-        self.check_ranking.pack(anchor="w", pady=2)
+        # Nomes públicos mantidos durante a migração da interface.
+        self.btn_selecionar = self.csv_page.btn_selecionar
+        self.btn_limpar = self.csv_page.btn_limpar
+        self.btn_processar = self.csv_page.btn_processar
+        self.btn_cancelar = self.processing_page.btn_cancelar
+        self.btn_abrir = self.success_page.btn_abrir
+        self.btn_abrir_pasta = self.success_page.btn_abrir_pasta
+        self.combo_departamento = self.csv_page.combo_departamento
+        self.var_saldo = self.csv_page.var_saldo
+        self.var_resumo = self.csv_page.var_resumo
+        self.var_ranking = self.csv_page.var_ranking
+        self.check_saldo = self.csv_page.check_saldo
+        self.check_resumo = self.csv_page.check_resumo
+        self.check_ranking = self.csv_page.check_ranking
         self.checkbox_saldo = self.check_saldo
         self.checkbox_resumo = self.check_resumo
         self.checkbox_ranking = self.check_ranking
+        self.progress = self.processing_page.progress
+        self.label_status = self.csv_page.label_status
+        self.label_arquivo = self.csv_page.label_arquivo
 
-        self.btn_processar = ctk.CTkButton(
-            actions,
-            text="Processar arquivo(s)",
-            height=44,
-            fg_color=SUCCESS,
-            hover_color="#0d634d",
-            font=FONT_BUTTON,
-            command=self._processar_clicado,
+        self._montar_rodape()
+        self.mostrar_pagina(PaginaInterface.INICIO)
+
+    def _montar_cabecalho(self) -> None:
+        cabecalho = ctk.CTkFrame(self.root, fg_color=BG_APP, corner_radius=0)
+        cabecalho.grid(row=0, column=0, sticky="ew", padx=24, pady=(2, 0))
+        cabecalho.grid_columnconfigure((0, 2), weight=1, uniform="cabecalho")
+
+        logo_path = resource_path("app/assets/logo_white.png")
+        if os.path.exists(logo_path):
+            try:
+                imagem = Image.open(logo_path).convert("RGBA")
+                # O arquivo fornecido contém margem da própria captura. O
+                # recorte mantém o logotipo legível em telas com escala alta.
+                imagem = imagem.crop((43, 25, 227, 105))
+                logo = ctk.CTkImage(
+                    light_image=imagem,
+                    dark_image=imagem,
+                    size=(125, 54),
+                )
+                self._imagens.append(logo)
+                ctk.CTkLabel(cabecalho, image=logo, text="").grid(
+                    row=0, column=1
+                )
+            except Exception:
+                logger.exception("Falha ao carregar o logotipo da aplicação.")
+        else:
+            ctk.CTkLabel(
+                cabecalho,
+                text="FAS JORNADA",
+                text_color="#ffffff",
+                font=("Segoe UI", 20, "bold"),
+            ).grid(row=0, column=1, pady=20)
+
+        self.label_versao = ctk.CTkLabel(
+            cabecalho,
+            text=f"Versão {APP_VERSION}",
+            text_color="#dce7ec",
+            font=("Segoe UI", 10, "bold"),
         )
-        self.btn_processar.pack(fill="x", pady=(0, 10))
+        self.label_versao.grid(row=0, column=2, sticky="e", padx=(0, 10))
 
-        self.btn_cancelar = ctk.CTkButton(
-            actions,
-            text="Cancelar",
-            height=36,
-            fg_color="#f9e5e3",
-            text_color=ERROR,
-            hover_color="#f2d2cf",
-            font=FONT_BUTTON,
-            command=self.controller.cancelar_processamento,
-            state="disabled",
+    def _montar_rodape(self) -> None:
+        rodape = Canvas(
+            self.root,
+            height=68,
+            background="#034a5c",
+            borderwidth=0,
+            highlightthickness=0,
         )
-        self.btn_cancelar.pack(fill="x", pady=(0, 10))
+        rodape.grid(row=2, column=0, sticky="ew")
+        footer_path = resource_path("app/assets/footer_pattern.png")
+        if os.path.exists(footer_path):
+            try:
+                self._footer_source = Image.open(footer_path).convert("RGB")
+                self._footer_canvas = rodape
+                rodape.bind("<Configure>", self._redesenhar_rodape, add="+")
+                return
+            except Exception:
+                logger.exception("Falha ao carregar a faixa visual da aplicação.")
 
-        sec = ctk.CTkFrame(actions, fg_color="transparent")
-        sec.pack(fill="x")
-
-        self.btn_abrir = ctk.CTkButton(
-            sec,
-            text="Abrir arquivo",
-            height=38,
-            fg_color="#e9eef5",
-            text_color=FG_TEXT,
-            hover_color="#dde6f1",
-            font=FONT_BUTTON,
-            command=self.controller.abrir_arquivo_gerado,
-            state="disabled",
+    def _redesenhar_rodape(self, evento) -> None:
+        if self._footer_source is None or evento.width < 2 or evento.height < 2:
+            return
+        imagem = ImageOps.fit(
+            self._footer_source,
+            (evento.width, evento.height),
+            method=Image.Resampling.LANCZOS,
+            centering=(0.5, 0.5),
         )
-        self.btn_abrir.pack(side="left", fill="x", expand=True, padx=(0, 5))
-
-        self.btn_abrir_pasta = ctk.CTkButton(
-            sec,
-            text="Abrir pasta",
-            height=38,
-            fg_color="#e9eef5",
-            text_color=FG_TEXT,
-            hover_color="#dde6f1",
-            font=FONT_BUTTON,
-            command=self.controller.abrir_pasta_gerada,
-            state="disabled",
+        self._footer_photo = ImageTk.PhotoImage(imagem)
+        self._footer_canvas.delete("all")
+        self._footer_canvas.create_image(
+            0, 0, image=self._footer_photo, anchor="nw"
         )
-        self.btn_abrir_pasta.pack(side="left", fill="x", expand=True, padx=(5, 0))
 
-        box_saida = ctk.CTkFrame(actions, fg_color=BG_BOX, corner_radius=14, border_width=1, border_color=BORDER)
-        box_saida.pack(fill="x", pady=(10, 14))
-        ctk.CTkLabel(box_saida, text="Pasta de saída", text_color=FG_MUTED, font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=14, pady=(12, 2))
-        self.label_pasta_saida = ctk.CTkLabel(
-            box_saida,
-            text="Nenhuma pasta selecionada ainda.",
-            text_color=FG_TEXT,
-            font=("Segoe UI", 12),
-            wraplength=360,
-            justify="left",
-            anchor="w",
-        )
-        self.label_pasta_saida.pack(fill="x", padx=14, pady=(0, 12))
-        self._vincular_quebra_texto(self.label_pasta_saida, box_saida, margem=28)
+    def mostrar_pagina(self, pagina: PaginaInterface) -> None:
+        pagina = PaginaInterface(pagina)
+        vistos = set()
+        for widget in self._paginas.values():
+            if id(widget) not in vistos:
+                widget.grid_remove()
+                vistos.add(id(widget))
+        self._paginas[pagina].grid(row=0, column=0, sticky="nsew")
+        self.pagina_atual = pagina
 
-        metricas = ctk.CTkFrame(actions, fg_color="transparent")
-        metricas.pack(fill="x", pady=(0, 14))
-        metricas.grid_columnconfigure(0, weight=1)
-        metricas.grid_columnconfigure(1, weight=1)
-        metricas.grid_columnconfigure(2, weight=1)
+    def _abrir_fluxo_csv(self) -> None:
+        if self.controller.processamento_em_andamento:
+            return
+        if self.estado_interface is EstadoInterface.CONCLUIDO:
+            self.controller.limpar_selecao()
+            self.csv_page.redefinir_opcoes()
+        self._fluxo_atual = "csv"
+        self.mostrar_pagina(PaginaInterface.CSV)
 
-        self.metric_func = self._criar_box_metrica(metricas, "Funcionários", "0")
-        self.metric_bt = self._criar_box_metrica(metricas, "Banco Total", "--:--")
-        self.metric_bs = self._criar_box_metrica(metricas, "Banco Saldo", "--:--")
+    def _abrir_fluxo_rhid(self) -> None:
+        if self.controller.processamento_em_andamento:
+            return
+        if (
+            self.estado_interface is EstadoInterface.CONCLUIDO
+            and self._fluxo_atual == "rhid"
+        ):
+            self.rhid_page.preparar_novo_relatorio()
+        self._fluxo_atual = "rhid"
+        if self._erro_credencial:
+            self.rhid_page.exibir_erro(self._erro_credencial)
+            self._erro_credencial = None
+        pagina = {
+            ETAPA_LOGIN: PaginaInterface.RHID_LOGIN,
+            ETAPA_DOMINIO: PaginaInterface.RHID_DOMINIO,
+            ETAPA_ESCOPO: PaginaInterface.RHID_ESCOPO,
+        }.get(self.rhid_page.etapa_atual, PaginaInterface.RHID_LOGIN)
+        self.mostrar_pagina(pagina)
 
-        self.metric_func.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
-        self.metric_bt.grid(row=0, column=1, sticky="nsew", padx=6)
-        self.metric_bs.grid(row=0, column=2, sticky="nsew", padx=(6, 0))
+    def _voltar_para_inicio(self) -> None:
+        if self.controller.processamento_em_andamento:
+            return
+        self.mostrar_pagina(PaginaInterface.INICIO)
 
-        tempo_box = ctk.CTkFrame(actions, fg_color=BG_BOX, corner_radius=14, border_width=1, border_color=BORDER)
-        tempo_box.pack(fill="x", pady=(0, 10))
-        ctk.CTkLabel(tempo_box, text="Tempo de execução", text_color=FG_MUTED, font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=14, pady=(10, 2))
-        self.label_tempo = ctk.CTkLabel(tempo_box, text="--", text_color=FG_TITLE, font=("Segoe UI", 14, "bold"))
-        self.label_tempo.pack(anchor="w", padx=14, pady=(0, 10))
+    def _gerar_outro_relatorio(self) -> None:
+        if self._fluxo_atual == "rhid":
+            self.rhid_page.preparar_novo_relatorio()
+            self.mostrar_pagina(PaginaInterface.RHID_ESCOPO)
+            return
 
-        self.progress = ctk.CTkProgressBar(actions, height=12)
-        self.progress.pack(fill="x", pady=(0, 10))
-        self.progress.set(0)
+        self.controller.limpar_selecao()
+        self.csv_page.redefinir_opcoes()
+        self._fluxo_atual = "csv"
+        self.mostrar_pagina(PaginaInterface.CSV)
 
-        self.label_status = ctk.CTkLabel(
-            actions,
-            text="Informação: Aguardando arquivo.",
-            text_color=FG_MUTED,
-            font=FONT_STATUS,
-            wraplength=360,
-            justify="left",
-            anchor="w",
-        )
-        self.label_status.pack(fill="x")
-        self._vincular_quebra_texto(self.label_status, actions, margem=4)
-
-        self.definir_estado(EstadoInterface.VAZIO, 0)
-
-    def _configurar_atalhos(self):
+    def _configurar_atalhos(self) -> None:
         self.root.bind_all("<Control-o>", self._atalho_selecionar, add="+")
         self.root.bind_all("<Control-O>", self._atalho_selecionar, add="+")
         self.root.bind_all("<Control-Return>", self._atalho_processar, add="+")
 
     @staticmethod
-    def _esta_habilitado(widget):
+    def _esta_habilitado(widget) -> bool:
         return str(widget.cget("state")) != "disabled"
 
-    @staticmethod
-    def _vincular_quebra_texto(label, parent, margem=0, minimo=180):
-        """Mantém textos longos dentro da largura realmente disponível."""
-
-        def atualizar_quebra(evento):
-            escala = ctk.ScalingTracker.get_widget_scaling(label)
-            largura_logica = (evento.width / escala) - margem
-            label.configure(wraplength=max(minimo, largura_logica))
-
-        parent.bind("<Configure>", atualizar_quebra, add="+")
-
     def _atalho_selecionar(self, _evento=None):
-        if self._esta_habilitado(self.btn_selecionar):
-            self.controller.selecionar_arquivos()
+        if not self.controller.processamento_em_andamento:
+            self._abrir_fluxo_csv()
+            if self._esta_habilitado(self.btn_selecionar):
+                self.controller.selecionar_arquivos()
         return "break"
 
     def _atalho_processar(self, _evento=None):
-        if self._esta_habilitado(self.btn_processar):
-            self._processar_clicado()
+        if self.pagina_atual is PaginaInterface.CSV and self._esta_habilitado(
+            self.btn_processar
+        ):
+            self.csv_page._processar()
         return "break"
 
-    def definir_estado(self, estado, total_arquivos=0):
-        """Aplica aos widgets a configuração visual do estado informado."""
+    def definir_estado(self, estado, total_arquivos=0) -> None:
         if not isinstance(estado, EstadoInterface):
             estado = EstadoInterface(estado)
-
         configuracao = obter_configuracao_interface(estado, total_arquivos)
-        estado_selecionar = "normal" if configuracao.selecionar_habilitado else "disabled"
-        estado_limpar = "normal" if configuracao.limpar_habilitado else "disabled"
-        estado_processar = "normal" if configuracao.processar_habilitado else "disabled"
-        estado_cancelar = "normal" if configuracao.cancelar_habilitado else "disabled"
-        estado_configuracao = "normal" if configuracao.configuracao_habilitada else "disabled"
-
         self.estado_interface = estado
+        self.csv_page.definir_acoes(
+            selecionar_habilitado=configuracao.selecionar_habilitado,
+            limpar_habilitado=configuracao.limpar_habilitado,
+            processar_habilitado=configuracao.processar_habilitado,
+            configuracao_habilitada=configuracao.configuracao_habilitada,
+            texto_selecionar=configuracao.texto_selecionar,
+            texto_processar=configuracao.texto_processar,
+        )
+
         if estado in (EstadoInterface.PROCESSANDO, EstadoInterface.CANCELANDO):
-            self.progress.configure(mode="indeterminate")
-            self.progress.start()
-        else:
-            self.progress.stop()
-            self.progress.configure(mode="determinate")
-            self.progress.set(self._valor_progresso)
+            origem = "RHiD" if self._fluxo_atual == "rhid" else "arquivo CSV"
+            self.processing_page.definir_origem(origem)
+            self.processing_page.parar_indeterminado()
+            self.processing_page.atualizar_progresso(
+                self._valor_progresso, self._status_atual
+            )
+            self.processing_page.definir_cancelamento_habilitado(
+                estado is EstadoInterface.PROCESSANDO and self._fluxo_atual == "csv",
+                configuracao.texto_cancelar,
+            )
+            self.mostrar_pagina(PaginaInterface.PROCESSAMENTO)
+            return
 
-        self.btn_selecionar.configure(
-            text=configuracao.texto_selecionar,
-            state=estado_selecionar,
-        )
-        self.btn_limpar.configure(state=estado_limpar)
-        self.btn_processar.configure(
-            text=configuracao.texto_processar,
-            state=estado_processar,
-        )
-        self.btn_cancelar.configure(
-            text=configuracao.texto_cancelar,
-            state=estado_cancelar,
-        )
-        self.combo_departamento.configure(
-            state="readonly" if configuracao.configuracao_habilitada else "disabled"
-        )
-        for checkbox in (self.check_saldo, self.check_resumo, self.check_ranking):
-            checkbox.configure(state=estado_configuracao)
+        if estado is EstadoInterface.CONCLUIDO:
+            self._atualizar_pagina_sucesso()
+            self.mostrar_pagina(PaginaInterface.SUCESSO)
+            return
 
-    def _processar_clicado(self):
-        self.controller.processar(
-            self.combo_departamento.get(),
-            gerar_saldo=self.var_saldo.get(),
-            gerar_resumo=self.var_resumo.get(),
-            gerar_ranking=self.var_ranking.get(),
+        if estado in (EstadoInterface.ERRO, EstadoInterface.CANCELADO):
+            if self._abrir_arquivo_habilitado or self._abrir_pasta_habilitado:
+                self._atualizar_pagina_sucesso()
+                tipo = "error" if estado is EstadoInterface.ERRO else "warning"
+                self.success_page.atualizar_status(self._status_atual, tipo)
+                self.mostrar_pagina(PaginaInterface.SUCESSO)
+                return
+            if self._fluxo_atual == "rhid":
+                self.mostrar_pagina(PaginaInterface.RHID_ESCOPO)
+            elif self._fluxo_atual == "csv":
+                self.mostrar_pagina(PaginaInterface.CSV)
+
+    def _atualizar_pagina_sucesso(self) -> None:
+        caminho = self._pasta_saida
+        resultado = getattr(self.controller, "ultimo_resultado", None)
+        if isinstance(resultado, dict) and resultado.get("caminho_saida"):
+            caminho = resultado["caminho_saida"]
+        self.success_page.atualizar_resultado(
+            *self._metricas,
+            caminho,
+            status="Relatório salvo com sucesso.",
+        )
+        self.success_page.definir_abertura_habilitada(
+            self._abrir_arquivo_habilitado,
+            self._abrir_pasta_habilitado,
         )
 
-    def _ao_tentar_fechar(self):
+    def _ao_tentar_fechar(self) -> None:
         if self.controller.processamento_em_andamento:
             messagebox.showwarning(
                 "Processamento em andamento",
@@ -473,158 +422,160 @@ class MainWindow:
                 parent=self.root,
             )
             return
-
         self.root.destroy()
 
     def agendar_na_interface(self, atraso_ms, callback):
-        """Agenda uma chamada no loop principal da interface."""
         return self.root.after(atraso_ms, callback)
 
-    def _abrir_dialogo_rhid(self):
-        if self._rhid_dialog is not None and self._rhid_dialog.winfo_exists():
-            self._rhid_dialog.focus_force()
-            return
-        self._rhid_dialog = RhidConnectionDialog(
-            self.root,
-            self.controller.conectar_rhid,
-            self.controller.gerar_relatorio_rhid,
-        )
+    # --- Integração RHiD -------------------------------------------------
+    def _abrir_dialogo_rhid(self) -> None:
+        """Compatibilidade: o antigo diálogo agora é uma página da janela."""
 
-    def definir_conexao_rhid_ocupada(self, ocupado):
-        if self._rhid_dialog is not None and self._rhid_dialog.winfo_exists():
-            self._rhid_dialog.definir_ocupado(ocupado)
+        self._abrir_fluxo_rhid()
 
-    def exibir_catalogo_rhid(self, empresas, departamentos):
-        if self._rhid_dialog is not None and self._rhid_dialog.winfo_exists():
-            self._rhid_dialog.exibir_catalogo(empresas, departamentos)
+    def _conectar_rhid(self, email, senha, dominio="") -> None:
+        _email, _senha, _dominio, lembrar = self.rhid_page.obter_credenciais_digitadas()
+        self._credencial_pendente = (email, senha, dominio, lembrar)
+        if not lembrar:
+            try:
+                self._credenciais.delete()
+            except CredentialStorageError:
+                logger.warning("Não foi possível remover a credencial RHiD anterior.")
+        self.controller.conectar_rhid(email, senha, dominio)
 
-    def exibir_dominios_rhid(self, tenants):
-        if self._rhid_dialog is not None and self._rhid_dialog.winfo_exists():
-            self._rhid_dialog.exibir_dominios(tenants)
-
-    def definir_geracao_rhid_ocupada(self, ocupado):
-        if self._rhid_dialog is not None and self._rhid_dialog.winfo_exists():
-            self._rhid_dialog.definir_geracao_ocupada(ocupado)
-
-    def atualizar_progresso_rhid(self, valor, mensagem=""):
-        if self._rhid_dialog is not None and self._rhid_dialog.winfo_exists():
-            self._rhid_dialog.atualizar_progresso(valor, mensagem)
-
-    def exibir_sucesso_rhid(self, mensagem):
-        if self._rhid_dialog is not None and self._rhid_dialog.winfo_exists():
-            self._rhid_dialog.exibir_sucesso_geracao(mensagem)
-
-    def exibir_erro_rhid(self, mensagem):
-        if self._rhid_dialog is not None and self._rhid_dialog.winfo_exists():
-            self._rhid_dialog.exibir_erro(mensagem)
-            messagebox.showerror(
-                "Operação do RHiD não concluída",
-                mensagem,
-                parent=self._rhid_dialog,
+    def _abrir_recuperacao_senha(self) -> None:
+        try:
+            aberto = webbrowser.open_new_tab(RHID_FORGOT_PASSWORD_URL)
+            if aberto is False:
+                raise OSError("O navegador não aceitou a solicitação.")
+        except Exception:
+            logger.exception("Não foi possível abrir a recuperação de senha do RHiD.")
+            self.rhid_page.exibir_erro(
+                "Não foi possível abrir o site do RHiD no navegador."
             )
 
-    def _criar_box_metrica(self, parent, titulo, valor):
-        box = ctk.CTkFrame(parent, fg_color=BG_BOX, corner_radius=14, border_width=1, border_color=BORDER)
-        ctk.CTkLabel(box, text=titulo, text_color=FG_MUTED, font=FONT_METRIC_TITLE).pack(pady=(12, 2))
-        valor_label = ctk.CTkLabel(box, text=valor, text_color=FG_TITLE, font=FONT_METRIC_VALUE)
-        valor_label.pack(pady=(0, 12))
-        box.valor_label = valor_label
-        return box
+    def _carregar_credenciais_salvas(self) -> None:
+        try:
+            credencial = self._credenciais.load()
+        except CredentialStorageError as erro:
+            logger.warning("Falha ao carregar credencial segura do RHiD: %s", erro)
+            self._erro_credencial = (
+                "Não foi possível carregar o acesso lembrado. Digite suas credenciais novamente."
+            )
+            return
+        if credencial is not None:
+            self.rhid_page.preencher_credenciais(
+                credencial.email, credencial.password, credencial.domain
+            )
 
-    def _montar_lateral(self, parent):
-        card = ctk.CTkFrame(parent, fg_color=BG_CARD, corner_radius=20, border_width=1, border_color=BORDER)
-        card.pack(fill="both", expand=True)
-        ctk.CTkLabel(card, text="Últimos processamentos", text_color=FG_TITLE, font=("Segoe UI", 14, "bold")).pack(anchor="w", padx=14, pady=(14, 10))
-        self.historico_frame = ctk.CTkScrollableFrame(card, fg_color="transparent")
-        self.historico_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+    def _salvar_credencial_apos_login(self) -> None:
+        pendente = self._credencial_pendente
+        if pendente is None:
+            return
+        email, senha, dominio, lembrar = pendente
+        self._credencial_pendente = None
+        if not lembrar:
+            return
+        try:
+            self._credenciais.save(email, senha, dominio)
+        except (CredentialStorageError, ValueError) as erro:
+            logger.warning("Falha ao salvar credencial segura do RHiD: %s", erro)
+            self.rhid_page.exibir_erro(
+                "Conectado, mas não foi possível lembrar o acesso com segurança."
+            )
 
+    def definir_conexao_rhid_ocupada(self, ocupado):
+        self.rhid_page.definir_ocupado(bool(ocupado))
+
+    def exibir_catalogo_rhid(self, empresas, departamentos):
+        self.rhid_page.exibir_catalogo(empresas, departamentos)
+        self._salvar_credencial_apos_login()
+        self._fluxo_atual = "rhid"
+        self.mostrar_pagina(PaginaInterface.RHID_ESCOPO)
+
+    def exibir_dominios_rhid(self, tenants):
+        self.rhid_page.exibir_dominios(tenants)
+        pagina = (
+            PaginaInterface.RHID_DOMINIO
+            if self.rhid_page.etapa_atual == ETAPA_DOMINIO
+            else PaginaInterface.RHID_LOGIN
+        )
+        self.mostrar_pagina(pagina)
+
+    def definir_geracao_rhid_ocupada(self, ocupado):
+        self.rhid_page.definir_geracao_ocupada(bool(ocupado))
+
+    def atualizar_progresso_rhid(self, valor, mensagem=""):
+        self.rhid_page.atualizar_progresso(valor, mensagem)
+        self.processing_page.atualizar_progresso(valor, mensagem)
+
+    def exibir_sucesso_rhid(self, mensagem):
+        self.rhid_page.exibir_sucesso_geracao(mensagem)
+
+    def exibir_erro_rhid(self, mensagem):
+        self.rhid_page.exibir_erro(mensagem)
+
+    # --- Fachada usada pelo controller ----------------------------------
     def atualizar_departamentos(self, departamentos, selecionado="Todos"):
-        self.combo_departamento.configure(values=departamentos)
-        valor = selecionado if selecionado in departamentos else "Todos"
-        self.combo_departamento.set(valor)
+        self.csv_page.atualizar_departamentos(departamentos, selecionado)
 
     def atualizar_arquivo(self, texto):
-        self.label_arquivo.configure(text=texto)
+        self.csv_page.atualizar_arquivo(texto)
 
     def atualizar_pasta_saida(self, texto):
-        self.label_pasta_saida.configure(text=texto)
+        self._pasta_saida = str(texto)
+        self.success_page.atualizar_caminho(texto)
 
     def atualizar_metricas(self, funcionarios, banco_total, banco_saldo):
-        self.metric_func.valor_label.configure(text=str(funcionarios))
-        self.metric_bt.valor_label.configure(text=banco_total)
-        self.metric_bs.valor_label.configure(text=banco_saldo)
+        self._metricas = (funcionarios, banco_total, banco_saldo)
+        self.success_page.atualizar_metricas(*self._metricas)
 
     def atualizar_status(self, texto, tipo="info"):
-        cor = PRIMARY
-        if tipo == "success":
-            cor = SUCCESS
-        elif tipo == "warning":
-            cor = WARNING
-        elif tipo == "error":
-            cor = ERROR
-
-        prefixos = {
-            "info": "Informação",
-            "success": "Sucesso",
-            "warning": "Atenção",
-            "error": "Erro",
-        }
-        prefixo = prefixos.get(tipo, prefixos["info"])
-        texto = str(texto)
-        prefixos_existentes = tuple(f"{valor}:" for valor in prefixos.values())
-        texto_acessivel = texto if texto.startswith(prefixos_existentes) else f"{prefixo}: {texto}"
-
-        self.label_status.configure(text=texto_acessivel, text_color=cor)
+        self._status_atual = str(texto)
+        self._status_tipo = tipo
+        if self.pagina_atual is PaginaInterface.PROCESSAMENTO:
+            self.processing_page.atualizar_status(texto, tipo)
+        elif self.pagina_atual is PaginaInterface.SUCESSO:
+            self.success_page.atualizar_status(texto, tipo)
+        elif self._fluxo_atual == "csv":
+            self.csv_page.atualizar_status(texto, tipo)
         self.root.update_idletasks()
 
     def atualizar_progresso(self, valor):
-        self._valor_progresso = valor
-        self.progress.set(valor)
+        try:
+            self._valor_progresso = max(0.0, min(1.0, float(valor)))
+        except (TypeError, ValueError):
+            self._valor_progresso = 0.0
+        self.processing_page.atualizar_progresso(self._valor_progresso)
         self.root.update_idletasks()
 
     def atualizar_tempo_execucao(self, segundos):
-        if segundos is None:
-            self.label_tempo.configure(text="--")
-        else:
-            self.label_tempo.configure(text=f"{segundos:.1f}s")
+        self._tempo_execucao = segundos
 
     def atualizar_versao(self):
         self.label_versao.configure(text=f"Versão {APP_VERSION}")
 
     def habilitar_botao_abrir(self, habilitar):
-        self.btn_abrir.configure(state="normal" if habilitar else "disabled")
+        self._abrir_arquivo_habilitado = bool(habilitar)
+        self.success_page.definir_abertura_habilitada(
+            self._abrir_arquivo_habilitado,
+            self._abrir_pasta_habilitado,
+        )
 
     def habilitar_botao_abrir_pasta(self, habilitar):
-        self.btn_abrir_pasta.configure(state="normal" if habilitar else "disabled")
+        self._abrir_pasta_habilitado = bool(habilitar)
+        self.success_page.definir_abertura_habilitada(
+            self._abrir_arquivo_habilitado,
+            self._abrir_pasta_habilitado,
+        )
 
-    def renderizar_historico(self, itens):
-        for widget in self.historico_frame.winfo_children():
-            widget.destroy()
-
-        if not itens:
-            ctk.CTkLabel(self.historico_frame, text="Nenhum processamento registrado.", text_color=FG_MUTED, font=("Segoe UI", 11)).pack(anchor="w", padx=6, pady=6)
-            return
-
-        for item in itens:
-            box = ctk.CTkFrame(self.historico_frame, fg_color=BG_BOX, corner_radius=12, border_width=1, border_color=BORDER)
-            box.pack(fill="x", padx=4, pady=4)
-            ctk.CTkLabel(box, text=item.get("data_execucao", ""), text_color=FG_MUTED, font=("Segoe UI", 9, "bold")).pack(anchor="w", padx=10, pady=(10, 2))
-            ctk.CTkLabel(box, text=f"Departamento: {item.get('departamento', 'Todos')}", text_color=FG_TEXT, font=("Segoe UI", 10)).pack(anchor="w", padx=10)
-            ctk.CTkLabel(box, text=f"Funcionários: {item.get('quantidade_funcionarios', 0)}", text_color=FG_TEXT, font=("Segoe UI", 10)).pack(anchor="w", padx=10)
-            ctk.CTkLabel(box, text=f"BT: {item.get('banco_total', '--:--')} | BS: {item.get('banco_saldo', '--:--')}", text_color=FG_TEXT, font=("Segoe UI", 10)).pack(anchor="w", padx=10)
-            abas = []
-            if item.get("gerou_saldo", True):
-                abas.append("SALDO")
-            if item.get("gerou_resumo", True):
-                abas.append("RESUMO")
-            if item.get("gerou_ranking", True):
-                abas.append("RANKING")
-            ctk.CTkLabel(box, text=f"Abas: {', '.join(abas) if abas else 'Somente principal'}", text_color=FG_MUTED, font=("Segoe UI", 9)).pack(anchor="w", padx=10, pady=(0, 10))
+    @staticmethod
+    def renderizar_historico(_itens):
+        """O histórico continua persistido, mas não ocupa mais a interface."""
 
     def run(self):
         self.root.mainloop()
 
 
 def iniciar_app():
-    app = MainWindow()
-    app.run()
+    MainWindow().run()

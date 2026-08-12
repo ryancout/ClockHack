@@ -1,4 +1,4 @@
-"""Orquestra o CSV gerado pelo RHiD e o pipeline já validado do ClockHack."""
+"""Orquestra o CSV gerado pelo RHiD e o pipeline validado do FAS Jornada."""
 
 from __future__ import annotations
 
@@ -20,12 +20,15 @@ from app.services.workbook_pipeline_service import processar_arquivo
 @dataclass(frozen=True, slots=True)
 class RhidReportPlan:
     company_id: int | None
-    department_id: int | None
+    department_id: int | tuple[int, ...] | None
     company_label: str
     department_label: str
     data_inicial: date
     data_final: date
     caminho_saida: str
+    gerar_saldo: bool = True
+    gerar_resumo: bool = True
+    gerar_ranking: bool = True
 
 
 _CABECALHOS_RHID = (
@@ -155,9 +158,9 @@ def processar_relatorio_rhid(
             caminho_temporario,
             plano.caminho_saida,
             "Todos",
-            gerar_saldo=True,
-            gerar_ranking=True,
-            gerar_resumo=True,
+            gerar_saldo=plano.gerar_saldo,
+            gerar_ranking=plano.gerar_ranking,
+            gerar_resumo=plano.gerar_resumo,
         )
         resultado["tipo_entrada"] = "RHID"
         resultado["departamento"] = plano.department_label

@@ -14,5 +14,5 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [3/3] Executavel gerado em dist\ProcessadorPlanilhasFAS.exe
+echo [3/3] Executavel gerado em dist\FASJornada.exe
 pause

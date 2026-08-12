@@ -156,7 +156,7 @@ class BackgroundTaskRunner(Generic[Resultado, Progresso]):
             thread = self._thread_factory(
                 target=executar_trabalho,
                 daemon=False,
-                name="ClockHackWorker",
+                name="FASJornadaWorker",
             )
             thread.start()
             thread_iniciada = True

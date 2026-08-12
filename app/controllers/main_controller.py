@@ -162,6 +162,9 @@ class MainController:
         departamento_id,
         data_inicial,
         data_final,
+        gerar_saldo=True,
+        gerar_resumo=True,
+        gerar_ranking=True,
     ):
         """Gera e trata o CSV oficial do RHiD sem download manual."""
         if self.processamento_em_andamento:
@@ -173,13 +176,32 @@ class MainController:
 
         try:
             empresa_id = int(empresa_id) if empresa_id is not None else None
-            departamento_id = int(departamento_id) if departamento_id is not None else None
+        except (TypeError, ValueError):
+            self.view.exibir_erro_rhid("Selecione uma empresa válida do RHiD.")
+            return
+
+        try:
+            if departamento_id is None:
+                departamento_ids = ()
+                filtro_departamento = None
+            elif isinstance(departamento_id, (list, tuple)):
+                departamento_ids = tuple(
+                    dict.fromkeys(int(item) for item in departamento_id)
+                )
+                filtro_departamento = departamento_ids or None
+            else:
+                departamento_unico = int(departamento_id)
+                departamento_ids = (departamento_unico,)
+                filtro_departamento = departamento_unico
+        except (TypeError, ValueError):
+            self.view.exibir_erro_rhid("Selecione setores válidos do RHiD.")
+            return
+
+        try:
             inicio = date.fromisoformat(str(data_inicial))
             fim = date.fromisoformat(str(data_final))
             if fim < inicio:
                 raise RhidApiError("A data final não pode ser anterior à data inicial.")
-            if (fim - inicio).days > 31:
-                raise RhidApiError("O relatório do RHiD permite no máximo 31 dias.")
 
             empresa = None
             if empresa_id is not None:
@@ -189,28 +211,41 @@ class MainController:
                 )
                 if empresa is None:
                     raise RhidApiError("Selecione uma empresa válida do RHiD.")
-            departamento = None
-            if departamento_id is not None:
+            departamentos = []
+            for item_id in departamento_ids:
                 departamento = next(
                     (
                         item
                         for item in self._rhid_departamentos
-                        if item.id == departamento_id
-                        and (empresa_id is None or item.company_id == empresa_id)
+                        if item.id == item_id
+                        and (
+                            empresa_id is None
+                            or item.company_id in (0, empresa_id)
+                        )
                     ),
                     None,
                 )
                 if departamento is None:
                     raise RhidApiError("Selecione um setor válido para essa empresa.")
+                departamentos.append(departamento)
         except ValueError:
-            self.view.exibir_erro_rhid("Use datas no formato AAAA-MM-DD.")
+            self.view.exibir_erro_rhid(
+                "Informe datas válidas no formato DD/MM/AAAA."
+            )
             return
         except RhidApiError as erro:
             self.view.exibir_erro_rhid(str(erro))
             return
 
         rotulo_empresa = empresa.label if empresa is not None else "Todas as empresas"
-        nome_escopo = departamento.name if departamento is not None else rotulo_empresa
+        if len(departamentos) == 1:
+            rotulo_departamento = departamentos[0].name
+        elif departamentos:
+            rotulo_departamento = f"{len(departamentos)} setores selecionados"
+        else:
+            rotulo_departamento = "Todos os setores"
+
+        nome_escopo = rotulo_departamento if departamentos else rotulo_empresa
         nome_seguro = re.sub(r'[^\w.-]+', "_", nome_escopo, flags=re.UNICODE).strip("_.")
         nome_padrao = (
             f"relatorio_rhid_{nome_seguro or empresa_id}_"
@@ -231,15 +266,17 @@ class MainController:
         except SobrescritaCanceladaError:
             return
 
-        rotulo_departamento = departamento.name if departamento is not None else "Todos os setores"
         plano = RhidReportPlan(
             company_id=empresa_id,
-            department_id=departamento_id,
+            department_id=filtro_departamento,
             company_label=rotulo_empresa,
             department_label=rotulo_departamento,
             data_inicial=inicio,
             data_final=fim,
             caminho_saida=caminho_saida,
+            gerar_saldo=gerar_saldo,
+            gerar_resumo=gerar_resumo,
+            gerar_ranking=gerar_ranking,
         )
         cliente = self._rhid_client
         self._rhid_runner = BackgroundTaskRunner(self.view.agendar_na_interface)
@@ -296,7 +333,7 @@ class MainController:
                 "processamento_rhid",
                 {
                     "empresa_id": empresa_id,
-                    "departamento_id": departamento_id,
+                    "departamento_ids": list(departamento_ids),
                     "periodo_inicial": inicio.isoformat(),
                     "periodo_final": fim.isoformat(),
                     "caminho_saida": caminho_saida,
@@ -809,22 +846,6 @@ class MainController:
                 "gerou_ranking": plano.gerar_ranking,
                 "tempo_execucao_segundos": round(tempo_total, 2),
             },
-        )
-
-        messagebox.showinfo(
-            "Sucesso",
-            f"Processamento concluído.\n\n"
-            f"Arquivos processados: {acumulador.processados}\n"
-            f"Arquivos ignorados: {acumulador.ignorados}\n"
-            f"Filtro aplicado: {plano.departamento}\n"
-            f"Funcionários: {acumulador.total_funcionarios}\n"
-            f"Banco Total: {formatar_horas(acumulador.total_bt_min)}\n"
-            f"Banco Saldo: {formatar_horas(acumulador.total_bs_min)}\n"
-            f"Tempo de execução: {tempo_total:.1f}s\n"
-            f"Saldo: {'Sim' if plano.gerar_saldo else 'Não'}\n"
-            f"Resumo: {'Sim' if plano.gerar_resumo else 'Não'}\n"
-            f"Ranking: {'Sim' if plano.gerar_ranking else 'Não'}\n\n"
-            f"Pasta de saída:\n{plano.pasta_saida}",
         )
 
         self._acumulador_lote = None

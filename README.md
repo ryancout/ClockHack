@@ -1,13 +1,15 @@
-# Processador de Planilhas FAS
+# FAS Jornada
 
-Aplicativo desktop em Python para tratamento de relatórios CSV de banco de horas, com cálculo automático, filtros, destaques visuais e geração de análises em Excel.
+**Relatório e Análise de Jornada.** Aplicativo desktop em Python para tratamento de relatórios de banco de horas, com cálculo automático, filtros, destaques visuais e geração de análises em Excel.
 
 ---
 
 ## Recursos
 
 - processamento em lote de arquivos de entrada `.csv`
-- conexão direta ao RHiD para escolher empresa, setor e período e gerar o Excel sem download manual
+- conexão direta ao RHiD para escolher empresa, um ou vários setores e período, sem download manual
+- opção **Todos os setores**, mantendo apenas setores com funcionários ativos
+- datas em `DD/MM/AAAA`, calendário e sem limite artificial de período no aplicativo
 - filtro por departamento antes do cálculo
 - cálculo de **Banco Total** e **Banco Saldo**
 - linha **TOTAL** na aba principal preservando a planilha tratada
@@ -15,7 +17,7 @@ Aplicativo desktop em Python para tratamento de relatórios CSV de banco de hora
 - destaque visual para saldos menores que `-8:00` e maiores que `8:00`
 - aba **RANKING** com top devedores e top horas extras
 - aba **RESUMO** com total por departamento
-- interface desktop com CustomTkinter
+- navegação responsiva em uma única janela, com fluxos equivalentes para CSV e RHiD
 - processamento pesado em segundo plano, mantendo a janela responsiva
 - cancelamento seguro do lote: o arquivo em andamento termina e os próximos não são iniciados
 - preferências, logs e histórico gravados fora da pasta do projeto
@@ -83,7 +85,7 @@ build_tools\gerar_exe.bat
 Saída esperada:
 
 ```
-dist\ProcessadorPlanilhasFAS.exe
+dist\FASJornada.exe
 ```
 
 ---
@@ -94,7 +96,7 @@ dist\ProcessadorPlanilhasFAS.exe
 2. Abra o arquivo:
 
 ```
-build_tools\ProcessadorPlanilhasFAS.iss
+build_tools\FASJornada.iss
 ```
 
 3. Compile no Inno Setup
@@ -112,7 +114,7 @@ releases/
 Sempre contendo apenas a versão mais recente:
 
 ```
-ProcessadorPlanilhasFAS_vX.X.X.zip
+FASJornada_vX.X.X.zip
 ```
 
 ---
@@ -142,8 +144,10 @@ O aplicativo utiliza um ícone único (`app/assets/icon.ico`) aplicado em:
 ## Observações de segurança
 
 - logs, histórico, auditoria e preferências são gravados em pasta do usuário
+- o diretório legado `ProcessadorPlanilhasFAS` é preservado para manter preferências e dados de versões anteriores
 - a integração opcional comunica-se somente com os serviços HTTPS oficiais do RHiD/Control iD
-- a senha do RHiD não é salva; o token permanece apenas na memória durante a execução
+- lembrar o acesso RHiD é opcional; quando marcado, usuário, domínio e senha ficam no Gerenciador de Credenciais do Windows ou em arquivo binário protegido por DPAPI — nunca em JSON ou texto puro
+- sem a opção de lembrar, a senha permanece apenas na memória durante a sessão
 - o pacote de distribuição não inclui:
   - `.git`
   - `build`

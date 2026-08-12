@@ -662,6 +662,9 @@ def test_relatorio_rhid_gera_excel_e_expoe_resultado(
     def processar(_cliente, plano, reportar):
         assert plano.company_id == 7
         assert plano.department_id == 12
+        assert plano.gerar_saldo is True
+        assert plano.gerar_resumo is True
+        assert plano.gerar_ranking is True
         reportar(50)
         return {
             "caminho_saida": str(saida),
@@ -688,3 +691,133 @@ def test_relatorio_rhid_gera_excel_e_expoe_resultado(
     assert controller.ultimo_resultado["tipo_entrada"] == "RHID"
     assert len(historicos) == 1
     assert [nome for nome, _dados in eventos] == ["processamento_rhid"]
+    assert eventos[0][1]["departamento_ids"] == [12]
+    assert "departamento_id" not in eventos[0][1]
+
+
+@pytest.mark.parametrize("departamento_ids", [[12, 13], (12, 13)])
+def test_relatorio_rhid_aceita_multiplos_setores_e_periodo_extenso(
+    monkeypatch,
+    tmp_path,
+    controller_isolado,
+    departamento_ids,
+):
+    controller, view, eventos, _historicos = controller_isolado
+    saida = tmp_path / "relatorio_rhid_multissetor.xlsx"
+    cliente = type("Cliente", (), {"autenticado": True})()
+    controller._rhid_client = cliente
+    controller._rhid_empresas = (RhidCompany(7, "Projeto A", "Projeto A"),)
+    controller._rhid_departamentos = (
+        RhidDepartment(12, "Operações", 7),
+        RhidDepartment(13, "Financeiro", 7),
+    )
+
+    monkeypatch.setattr(
+        controller_module.filedialog,
+        "asksaveasfilename",
+        lambda **_kwargs: str(saida),
+    )
+    monkeypatch.setattr(
+        controller_module,
+        "BackgroundTaskRunner",
+        lambda _agendar: TaskRunnerImediato(),
+    )
+
+    def processar(_cliente, plano, _reportar):
+        assert plano.company_id == 7
+        assert plano.department_id == (12, 13)
+        assert plano.department_label == "2 setores selecionados"
+        assert plano.gerar_saldo is False
+        assert plano.gerar_resumo is True
+        assert plano.gerar_ranking is False
+        return {
+            "caminho_saida": str(saida),
+            "tipo_entrada": "RHID",
+            "quantidade_funcionarios": 8,
+            "banco_total": "40:00",
+            "banco_saldo": "2:00",
+            "departamento": plano.department_label,
+            "gerou_saldo": plano.gerar_saldo,
+            "gerou_resumo": plano.gerar_resumo,
+            "gerou_ranking": plano.gerar_ranking,
+        }
+
+    monkeypatch.setattr(controller_module, "processar_relatorio_rhid", processar)
+
+    controller.gerar_relatorio_rhid(
+        7,
+        departamento_ids,
+        "2026-01-01",
+        "2026-08-11",
+        gerar_saldo=False,
+        gerar_resumo=True,
+        gerar_ranking=False,
+    )
+
+    assert view.rhid_erros == []
+    assert view.arquivos[-1].startswith(
+        "RHiD: Projeto A / 2 setores selecionados /"
+    )
+    assert eventos[0][1]["departamento_ids"] == [12, 13]
+    assert "departamento_id" not in eventos[0][1]
+
+
+def test_relatorio_rhid_recusa_setor_de_outra_empresa(
+    monkeypatch,
+    controller_isolado,
+):
+    controller, view, _eventos, _historicos = controller_isolado
+    cliente = type("Cliente", (), {"autenticado": True})()
+    controller._rhid_client = cliente
+    controller._rhid_empresas = (
+        RhidCompany(7, "Projeto A", "Projeto A"),
+        RhidCompany(8, "Projeto B", "Projeto B"),
+    )
+    controller._rhid_departamentos = (
+        RhidDepartment(12, "Operações", 7),
+        RhidDepartment(20, "Comercial", 8),
+    )
+    dialogos = []
+    monkeypatch.setattr(
+        controller_module.filedialog,
+        "asksaveasfilename",
+        lambda **_kwargs: dialogos.append(True),
+    )
+
+    controller.gerar_relatorio_rhid(
+        7,
+        [12, 20],
+        "2026-08-01",
+        "2026-08-11",
+    )
+
+    assert dialogos == []
+    assert view.rhid_erros == ["Selecione um setor válido para essa empresa."]
+
+
+def test_relatorio_rhid_aceita_setor_global_com_funcionarios(
+    monkeypatch,
+    controller_isolado,
+):
+    controller, view, _eventos, _historicos = controller_isolado
+    controller._rhid_client = type("Cliente", (), {"autenticado": True})()
+    controller._rhid_empresas = (RhidCompany(7, "Projeto A", "Projeto A"),)
+    controller._rhid_departamentos = (
+        RhidDepartment(12, "Setor compartilhado", 0),
+    )
+    dialogos = []
+    monkeypatch.setattr(
+        controller_module.filedialog,
+        "asksaveasfilename",
+        lambda **_kwargs: dialogos.append(True) or "",
+    )
+
+    controller.gerar_relatorio_rhid(
+        7,
+        12,
+        "2026-08-01",
+        "2026-08-11",
+    )
+
+    assert dialogos == [True]
+    assert view.rhid_erros == []
