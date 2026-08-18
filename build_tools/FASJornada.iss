@@ -1,6 +1,6 @@
 ; Inno Setup script
 #define MyAppName "FAS Jornada"
-#define MyAppVersion "6.4"
+#define MyAppVersion "8.0"
 #define MyAppPublisher "FAS"
 #define MyAppExeName "FASJornada.exe"
 

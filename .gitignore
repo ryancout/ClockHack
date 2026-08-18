@@ -19,6 +19,7 @@ ENV/
 # =========================
 build/
 dist/
+releases/
 *.exe
 *.manifest
 
@@ -36,6 +37,7 @@ htmlcov/
 logs/
 *.tmp
 *.temp
+.tmp_ui_*.png
 
 # =========================
 # DADOS LOCAIS

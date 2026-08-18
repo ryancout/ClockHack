@@ -1,8 +1,8 @@
 # UTF-8
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(6,4,0,0),
-    prodvers=(6,4,0,0),
+    filevers=(8,0,0,0),
+    prodvers=(8,0,0,0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -17,11 +17,11 @@ VSVersionInfo(
         [
           StringStruct('CompanyName', 'FAS'),
           StringStruct('FileDescription', 'Relatório e Análise de Jornada'),
-          StringStruct('FileVersion', '6.4'),
+          StringStruct('FileVersion', '8.0'),
           StringStruct('InternalName', 'FASJornada'),
           StringStruct('OriginalFilename', 'FASJornada.exe'),
           StringStruct('ProductName', 'FAS Jornada'),
-          StringStruct('ProductVersion', '6.4')
+          StringStruct('ProductVersion', '8.0')
         ]
       )
     ]),

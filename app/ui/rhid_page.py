@@ -142,18 +142,17 @@ class _CalendarioInline(ctk.CTkFrame):
         self._ao_selecionar = ao_selecionar
         self._ano = date.today().year
         self._mes = date.today().month
-        self.grid_columnconfigure(tuple(range(7)), weight=1)
-
         self.btn_anterior = ctk.CTkButton(
             self,
             text="‹",
-            width=34,
+            width=28,
+            height=26,
             fg_color="transparent",
             text_color=FG_TEXT,
             hover_color=BG_BOX,
             command=lambda: self._mudar_mes(-1),
         )
-        self.btn_anterior.grid(row=0, column=0, padx=5, pady=5)
+        self.btn_anterior.grid(row=0, column=0, padx=3, pady=3)
         self.label_mes = ctk.CTkLabel(
             self, text="", text_color=FG_TITLE, font=("Segoe UI", 11, "bold")
         )
@@ -161,13 +160,14 @@ class _CalendarioInline(ctk.CTkFrame):
         self.btn_proximo = ctk.CTkButton(
             self,
             text="›",
-            width=34,
+            width=28,
+            height=26,
             fg_color="transparent",
             text_color=FG_TEXT,
             hover_color=BG_BOX,
             command=lambda: self._mudar_mes(1),
         )
-        self.btn_proximo.grid(row=0, column=6, padx=5, pady=5)
+        self.btn_proximo.grid(row=0, column=6, padx=3, pady=3)
 
         for coluna, texto in enumerate(self._DIAS_SEMANA):
             ctk.CTkLabel(
@@ -182,8 +182,9 @@ class _CalendarioInline(ctk.CTkFrame):
             botao = ctk.CTkButton(
                 self,
                 text="",
-                width=30,
-                height=28,
+                width=25,
+                height=22,
+                font=("Segoe UI", 9),
                 fg_color="transparent",
                 text_color=FG_TEXT,
                 hover_color="#e8f1fc",
@@ -191,9 +192,8 @@ class _CalendarioInline(ctk.CTkFrame):
             botao.grid(
                 row=2 + indice // 7,
                 column=indice % 7,
-                sticky="ew",
-                padx=2,
-                pady=2,
+                padx=1,
+                pady=1,
             )
             self._botoes_dia.append(botao)
         self._renderizar()
@@ -298,8 +298,8 @@ class RhidPage(ctk.CTkFrame):
 
     def _montar_cabecalho(self) -> None:
         cabecalho = ctk.CTkFrame(self, fg_color="transparent")
-        cabecalho.grid(row=0, column=0, sticky="ew", padx=24, pady=(18, 8))
-        cabecalho.grid_columnconfigure(1, weight=1)
+        cabecalho.grid(row=0, column=0, sticky="ew", padx=24, pady=(8, 5))
+        cabecalho.grid_columnconfigure((0, 2), weight=1, uniform="laterais")
         self.btn_voltar = ctk.CTkButton(
             cabecalho,
             text="← Voltar",
@@ -317,27 +317,30 @@ class RhidPage(ctk.CTkFrame):
             text_color="#ffffff",
             font=("Segoe UI", 21, "bold"),
         ).grid(row=0, column=1)
+        # Mantém o título no centro exato, compensando o botão à esquerda.
+        ctk.CTkFrame(cabecalho, width=92, height=1, fg_color="transparent").grid(
+            row=0, column=2, sticky="e"
+        )
 
     def _montar_conteudo(self) -> None:
-        self._rolagem = ctk.CTkScrollableFrame(
+        self._rolagem = ctk.CTkFrame(
             self,
             fg_color=BG_APP,
             corner_radius=0,
-            scrollbar_button_color=BORDER,
-            scrollbar_button_hover_color=FG_MUTED,
         )
-        self._rolagem.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 16))
+        self._rolagem.grid(row=1, column=0, sticky="nsew", padx=20, pady=(0, 8))
         self._rolagem.grid_columnconfigure(0, weight=1)
+        self._rolagem.grid_rowconfigure(0, weight=1)
 
         self._etapas = ctk.CTkFrame(self._rolagem, fg_color="transparent")
-        self._etapas.grid(row=0, column=0, sticky="nsew")
+        self._etapas.grid(row=0, column=0, sticky="new")
         self._etapas.grid_columnconfigure(0, weight=1)
         self._montar_login()
         self._montar_dominio()
         self._montar_escopo()
 
         self.feedback = ctk.CTkFrame(self._rolagem, fg_color="transparent")
-        self.feedback.grid(row=1, column=0, sticky="ew", padx=2, pady=(10, 0))
+        self.feedback.grid(row=1, column=0, sticky="ew", padx=2, pady=(4, 0))
         self.feedback.grid_columnconfigure(0, weight=1)
         self.progress_geracao = ctk.CTkProgressBar(self.feedback, height=9)
         self.progress_geracao.grid(row=0, column=0, sticky="ew")
@@ -372,7 +375,7 @@ class RhidPage(ctk.CTkFrame):
             text_color=FG_TITLE,
             font=("Segoe UI", 19, "bold"),
             anchor="w",
-        ).grid(row=0, column=0, sticky="ew", padx=24, pady=(22, 3))
+        ).grid(row=0, column=0, sticky="ew", padx=24, pady=(14, 2))
         ctk.CTkLabel(
             card,
             text=subtitulo,
@@ -380,7 +383,7 @@ class RhidPage(ctk.CTkFrame):
             justify="left",
             anchor="w",
             wraplength=720,
-        ).grid(row=1, column=0, sticky="ew", padx=24, pady=(0, 16))
+        ).grid(row=1, column=0, sticky="ew", padx=24, pady=(0, 9))
 
     @staticmethod
     def _campo(parent, titulo: str, linha: int, **kwargs):
@@ -484,33 +487,46 @@ class RhidPage(ctk.CTkFrame):
             "Configurar relatório",
             "Escolha a empresa, os setores, o período e as abas do Excel.",
         )
+
+        conteudo = ctk.CTkFrame(self.frame_escopo, fg_color="transparent")
+        conteudo.grid(row=2, column=0, sticky="nsew", padx=24, pady=(0, 14))
+        conteudo.grid_columnconfigure(0, weight=3, uniform="escopo")
+        conteudo.grid_columnconfigure(1, weight=2, uniform="escopo")
+
+        selecao = ctk.CTkFrame(conteudo, fg_color="transparent")
+        selecao.grid(row=0, column=0, sticky="nsew", padx=(0, 9))
+        selecao.grid_columnconfigure(0, weight=1)
+
+        configuracao = ctk.CTkFrame(conteudo, fg_color="transparent")
+        configuracao.grid(row=0, column=1, sticky="nsew", padx=(9, 0))
+        configuracao.grid_columnconfigure(0, weight=1)
+
         ctk.CTkLabel(
-            self.frame_escopo, text="Empresa", text_color=FG_MUTED, anchor="w"
-        ).grid(row=2, column=0, sticky="ew", padx=24, pady=(6, 4))
+            selecao, text="Empresa", text_color=FG_MUTED, anchor="w"
+        ).grid(row=0, column=0, sticky="ew", pady=(2, 4))
         self.combo_empresa = ctk.CTkComboBox(
-            self.frame_escopo,
+            selecao,
             values=["Conecte-se primeiro"],
             state="disabled",
             height=38,
             command=self._empresa_alterada,
         )
-        self.combo_empresa.grid(row=3, column=0, sticky="ew", padx=24)
+        self.combo_empresa.grid(row=1, column=0, sticky="ew")
 
         ctk.CTkLabel(
-            self.frame_escopo,
+            selecao,
             text="Setores / departamentos",
             text_color=FG_MUTED,
             anchor="w",
-        ).grid(row=4, column=0, sticky="ew", padx=24, pady=(14, 4))
-        self.departamentos_box = ctk.CTkScrollableFrame(
-            self.frame_escopo,
-            height=150,
+        ).grid(row=2, column=0, sticky="ew", pady=(10, 4))
+        self.departamentos_box = ctk.CTkFrame(
+            selecao,
             fg_color=BG_BOX,
             corner_radius=12,
             border_width=1,
             border_color=BORDER,
         )
-        self.departamentos_box.grid(row=5, column=0, sticky="ew", padx=24)
+        self.departamentos_box.grid(row=3, column=0, sticky="ew")
         self.departamentos_box.grid_columnconfigure(0, weight=1)
         self.var_todos_setores = ctk.BooleanVar(value=True)
         self.check_todos_setores = ctk.CTkCheckBox(
@@ -522,12 +538,14 @@ class RhidPage(ctk.CTkFrame):
             fg_color=PRIMARY,
             hover_color="#0955af",
         )
-        self.check_todos_setores.grid(row=0, column=0, sticky="w", padx=8, pady=7)
+        self.check_todos_setores.grid(
+            row=0, column=0, columnspan=4, sticky="w", padx=10, pady=(7, 4)
+        )
 
-        self._montar_periodo()
-        self._montar_opcoes_abas()
+        self._montar_periodo(configuracao)
+        self._montar_opcoes_abas(configuracao)
         self.btn_gerar = ctk.CTkButton(
-            self.frame_escopo,
+            configuracao,
             text="Gerar relatório",
             height=42,
             fg_color=SUCCESS,
@@ -536,11 +554,11 @@ class RhidPage(ctk.CTkFrame):
             state="disabled",
             command=self._gerar_relatorio,
         )
-        self.btn_gerar.grid(row=9, column=0, sticky="ew", padx=24, pady=(8, 24))
+        self.btn_gerar.grid(row=2, column=0, sticky="ew", pady=(8, 0))
 
-    def _montar_periodo(self) -> None:
-        periodo = ctk.CTkFrame(self.frame_escopo, fg_color="transparent")
-        periodo.grid(row=6, column=0, sticky="ew", padx=24, pady=(14, 2))
+    def _montar_periodo(self, parent) -> None:
+        periodo = ctk.CTkFrame(parent, fg_color="transparent")
+        periodo.grid(row=0, column=0, sticky="ew", pady=(2, 1))
         periodo.grid_columnconfigure((0, 1), weight=1)
         inicio_padrao, fim_padrao = periodo_padrao()
 
@@ -557,7 +575,7 @@ class RhidPage(ctk.CTkFrame):
             bloco.grid_columnconfigure(0, weight=1)
             ctk.CTkLabel(
                 bloco,
-                text=f"{titulo} (DD/MM/AAAA)",
+                text=titulo,
                 text_color=FG_MUTED,
                 anchor="w",
             ).grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 4))
@@ -566,8 +584,8 @@ class RhidPage(ctk.CTkFrame):
             entrada.insert(0, valor)
             botao = ctk.CTkButton(
                 bloco,
-                text="Calendário",
-                width=86,
+                text="Abrir",
+                width=52,
                 height=38,
                 fg_color=BG_BOX,
                 text_color=PRIMARY,
@@ -584,26 +602,25 @@ class RhidPage(ctk.CTkFrame):
                 self.entry_data_final = entrada
                 self.btn_calendario_final = botao
 
-        self.calendario = _CalendarioInline(periodo, self._data_escolhida)
-        self.calendario.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(8, 0))
-        self.calendario.grid_remove()
+        self.calendario = _CalendarioInline(self.frame_escopo, self._data_escolhida)
+        self.calendario.place_forget()
 
-    def _montar_opcoes_abas(self) -> None:
-        opcoes = ctk.CTkFrame(self.frame_escopo, fg_color=BG_BOX, corner_radius=12)
-        opcoes.grid(row=7, column=0, sticky="ew", padx=24, pady=(12, 10))
-        opcoes.grid_columnconfigure((0, 1, 2), weight=1)
+    def _montar_opcoes_abas(self, parent) -> None:
+        opcoes = ctk.CTkFrame(parent, fg_color=BG_BOX, corner_radius=12)
+        opcoes.grid(row=1, column=0, sticky="ew", pady=(9, 4))
+        opcoes.grid_columnconfigure((0, 1), weight=1)
         ctk.CTkLabel(
             opcoes,
             text="Abas adicionais",
             text_color=FG_MUTED,
             anchor="w",
             font=("Segoe UI", 10, "bold"),
-        ).grid(row=0, column=0, columnspan=3, sticky="ew", padx=12, pady=(10, 6))
+        ).grid(row=0, column=0, columnspan=2, sticky="ew", padx=12, pady=(7, 4))
         self.var_gerar_saldo = ctk.BooleanVar(value=True)
         self.var_gerar_resumo = ctk.BooleanVar(value=True)
         self.var_gerar_ranking = ctk.BooleanVar(value=True)
         self.check_abas: list[ctk.CTkCheckBox] = []
-        for coluna, (texto, variavel) in enumerate(
+        for indice, (texto, variavel) in enumerate(
             (
                 ("SALDO", self.var_gerar_saldo),
                 ("RESUMO", self.var_gerar_resumo),
@@ -618,7 +635,13 @@ class RhidPage(ctk.CTkFrame):
                 fg_color=PRIMARY,
                 hover_color="#0955af",
             )
-            check.grid(row=1, column=coluna, sticky="w", padx=12, pady=(0, 12))
+            check.grid(
+                row=1 + indice // 2,
+                column=indice % 2,
+                sticky="w",
+                padx=12,
+                pady=(0, 8),
+            )
             self.check_abas.append(check)
 
     def _mostrar_etapa(self, etapa: str) -> None:
@@ -634,6 +657,8 @@ class RhidPage(ctk.CTkFrame):
         }[etapa].grid(row=0, column=0, sticky="ew")
         self.label_status.configure(text="")
         if etapa != ETAPA_ESCOPO:
+            self.calendario.place_forget()
+            self._entrada_calendario = None
             self.progress_geracao.grid_remove()
         self._atualizar_estados_controles()
 
@@ -808,7 +833,13 @@ class RhidPage(ctk.CTkFrame):
         self._departamentos_visiveis = tuple(departamentos)
         self.var_todos_setores.set(True)
 
-        for linha, departamento in enumerate(self._departamentos_visiveis, start=1):
+        quantidade = len(self._departamentos_visiveis)
+        colunas = 1 if quantidade <= 5 else 2 if quantidade <= 10 else 3
+        self.departamentos_box.grid_columnconfigure(
+            tuple(range(colunas)), weight=1, uniform="departamentos"
+        )
+
+        for indice, departamento in enumerate(self._departamentos_visiveis):
             identificador = getattr(departamento, "id")
             chave = _chave_id(identificador)
             variavel = ctk.BooleanVar(value=False)
@@ -816,14 +847,23 @@ class RhidPage(ctk.CTkFrame):
             self._departamento_id_por_chave[chave] = identificador
             check = ctk.CTkCheckBox(
                 self.departamentos_box,
-                text=_rotulo_com_id(_nome_departamento(departamento), identificador),
+                text=_nome_departamento(departamento),
                 variable=variavel,
                 state="disabled",
                 text_color=FG_TEXT,
                 fg_color=PRIMARY,
                 hover_color="#0955af",
+                checkbox_width=18,
+                checkbox_height=18,
+                font=("Segoe UI", 11),
             )
-            check.grid(row=linha, column=0, sticky="w", padx=8, pady=7)
+            check.grid(
+                row=1 + indice // colunas,
+                column=indice % colunas,
+                sticky="w",
+                padx=10,
+                pady=3,
+            )
             self._departamento_checks.append(check)
 
     def _alternar_todos_setores(self) -> None:
@@ -850,7 +890,7 @@ class RhidPage(ctk.CTkFrame):
         if self._geracao_em_andamento:
             return
         if self._entrada_calendario is entrada and self.calendario.winfo_ismapped():
-            self.calendario.grid_remove()
+            self.calendario.place_forget()
             self._entrada_calendario = None
             return
         try:
@@ -859,13 +899,14 @@ class RhidPage(ctk.CTkFrame):
             referencia = date.today()
         self._entrada_calendario = entrada
         self.calendario.abrir_em(referencia)
-        self.calendario.grid()
+        self.calendario.place(relx=0.78, rely=0.27, anchor="n")
+        self.calendario.lift()
 
     def _data_escolhida(self, valor: date) -> None:
         if self._entrada_calendario is None:
             return
         self._preencher_entry(self._entrada_calendario, valor.strftime("%d/%m/%Y"))
-        self.calendario.grid_remove()
+        self.calendario.place_forget()
         self._entrada_calendario = None
 
     def obter_parametros_geracao(

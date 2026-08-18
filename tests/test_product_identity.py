@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_identidade_publica_do_produto():
     assert APP_NAME == "FAS Jornada"
+    assert APP_VERSION == "8.0"
     assert config.APP_TITLE == f"FAS Jornada - V{APP_VERSION}"
 
 
@@ -30,5 +31,7 @@ def test_metadados_e_instalador_usam_nova_identidade():
     assert "StringStruct('ProductName', 'FAS Jornada')" in versao
     assert "StringStruct('FileDescription', 'Relatório e Análise de Jornada')" in versao
     assert "StringStruct('InternalName', 'FASJornada')" in versao
+    assert "StringStruct('ProductVersion', '8.0')" in versao
     assert "#define MyAppExeName \"FASJornada.exe\"" in instalador
+    assert "#define MyAppVersion \"8.0\"" in instalador
     assert "AppId={{A8E7A9B6-9C32-49D2-A0C9-7E4C11223344}" in instalador

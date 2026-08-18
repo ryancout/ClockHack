@@ -2,6 +2,21 @@
 
 **Relatório e Análise de Jornada.** Aplicativo desktop em Python para tratamento de relatórios de banco de horas, com cálculo automático, filtros, destaques visuais e geração de análises em Excel.
 
+**Versão atual: 8.0 — Windows 10/11**
+
+[Baixar a versão mais recente](https://github.com/ryancout/ClockHack/releases/latest)
+
+---
+
+## Instalação
+
+Na página de releases, escolha uma das opções:
+
+- `FASJornada_Setup_8.0.exe` — instalador recomendado, com atalhos e desinstalação pelo Windows
+- `FASJornada_v8.0_portable.zip` — versão portátil; extraia o ZIP e execute `FASJornada.exe`
+
+O Windows pode exibir uma confirmação de segurança porque o aplicativo ainda não possui assinatura digital comercial. Confira se o arquivo foi baixado diretamente deste repositório antes de executá-lo.
+
 ---
 
 ## Recursos
@@ -25,6 +40,7 @@
 - tempo de execução ao final
 - validação de arquivos de entrada
 - mensagens de erro amigáveis
+- armazenamento opcional das credenciais RHiD no Gerenciador de Credenciais do Windows ou protegido por DPAPI
 
 ---
 
@@ -58,7 +74,7 @@ Durante um lote, o botão **Cancelar processamento** interrompe o trabalho de fo
 
 ---
 
-## Build automático (recomendado)
+## Build versionado
 
 ```bat
 build_tools\build_release_auto_version.bat
@@ -69,10 +85,13 @@ O script:
 - solicita a versão
 - atualiza `app/core/version.py`
 - atualiza `version_info.txt`
+- atualiza a versão do instalador em `build_tools/FASJornada.iss`
 - limpa builds anteriores
 - gera o executável (.exe)
 - cria o arquivo `.zip`
-- envia automaticamente para o GitHub
+- cria o commit e envia o código para a branch `main`
+
+A tag e a release com os arquivos para download devem ser publicadas no GitHub após a validação dos artefatos.
 
 ---
 
@@ -114,7 +133,7 @@ releases/
 Sempre contendo apenas a versão mais recente:
 
 ```
-FASJornada_vX.X.X.zip
+FASJornada_vX.X.X_portable.zip
 ```
 
 ---
@@ -125,8 +144,9 @@ A versão do aplicativo é controlada em:
 
 - `app/core/version.py` → versão exibida no app
 - `version_info.txt` → versão do executável (Windows)
+- `build_tools/FASJornada.iss` → versão e nome do instalador
 
-Ambos são atualizados automaticamente pelo script de build.
+Os três são atualizados automaticamente pelo script de build.
 
 ---
 

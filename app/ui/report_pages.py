@@ -129,7 +129,7 @@ class _ReportPage(ctk.CTkFrame):
 
 
 class HomePage(_ReportPage):
-    """Entrada do aplicativo com CSV e RHiD em igual destaque."""
+    """Entrada simples do aplicativo com as duas origens em coluna."""
 
     def __init__(
         self,
@@ -139,47 +139,69 @@ class HomePage(_ReportPage):
     ) -> None:
         super().__init__(parent)
         card = self._criar_card(padx=32, pady=30)
-        card.grid_rowconfigure(3, weight=1)
+        card.grid_rowconfigure(0, weight=1)
 
-        proxima_linha = self._titulo(
+        apresentacao = ctk.CTkFrame(
             card,
-            "FAS Jornada",
-            "Relatório e Análise de Jornada",
-            row=0,
+            width=560,
+            height=350,
+            fg_color="transparent",
         )
-        ctk.CTkLabel(
-            card,
-            text="Como deseja gerar o relatório?",
-            font=("Segoe UI", 15, "bold"),
-            text_color=TEXT_PRIMARY,
-        ).grid(row=proxima_linha, column=0, pady=(16, 16))
+        apresentacao.grid(row=0, column=0)
+        apresentacao.grid_propagate(False)
+        apresentacao.grid_columnconfigure(0, weight=1)
 
-        acoes = ctk.CTkFrame(card, fg_color="transparent")
-        acoes.grid(row=proxima_linha + 1, column=0, sticky="nsew", padx=28, pady=(0, 28))
-        acoes.grid_columnconfigure((0, 1), weight=1, uniform="origens")
-        acoes.grid_rowconfigure(0, weight=1)
+        ctk.CTkLabel(
+            apresentacao,
+            text="FAS Jornada",
+            font=("Segoe UI", 34, "bold"),
+            text_color=TEXT_PRIMARY,
+        ).grid(row=0, column=0, sticky="ew", pady=(8, 4))
+        ctk.CTkLabel(
+            apresentacao,
+            text="Relatórios e análises de jornada em um só lugar",
+            font=("Segoe UI", 13),
+            text_color=TEXT_MUTED,
+        ).grid(row=1, column=0, sticky="ew")
+        ctk.CTkLabel(
+            apresentacao,
+            text="Como deseja começar?",
+            font=("Segoe UI", 17, "bold"),
+            text_color=TEXT_PRIMARY,
+        ).grid(row=2, column=0, sticky="ew", pady=(38, 20))
+
+        acoes = ctk.CTkFrame(
+            apresentacao,
+            width=360,
+            height=130,
+            fg_color="transparent",
+        )
+        acoes.grid(row=3, column=0)
+        acoes.grid_propagate(False)
+        acoes.grid_columnconfigure(0, weight=1)
+        acoes.grid_rowconfigure((0, 1), weight=1)
 
         self.btn_csv = ctk.CTkButton(
             acoes,
-            text="Arquivo CSV\n\nUsar relatório exportado do RHiD",
-            height=108,
+            text="Arquivo CSV\nImportar relatório já exportado",
+            height=54,
             fg_color=PRIMARY,
             hover_color=PRIMARY_HOVER,
             font=("Segoe UI", 14, "bold"),
             command=ao_csv,
         )
-        self.btn_csv.grid(row=0, column=0, sticky="nsew", padx=(0, 7))
+        self.btn_csv.grid(row=0, column=0, sticky="ew", pady=(0, 6))
 
         self.btn_rhid = ctk.CTkButton(
             acoes,
-            text="Integração RHiD\n\nGerar direto pelo sistema",
-            height=108,
+            text="Integração RHiD\nGerar relatório diretamente",
+            height=54,
             fg_color=PRIMARY,
             hover_color=PRIMARY_HOVER,
             font=("Segoe UI", 14, "bold"),
             command=ao_rhid,
         )
-        self.btn_rhid.grid(row=0, column=1, sticky="nsew", padx=(7, 0))
+        self.btn_rhid.grid(row=1, column=0, sticky="ew", pady=(6, 0))
 
 
 class CsvPage(_ReportPage):

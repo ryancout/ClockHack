@@ -7,7 +7,7 @@ cd /d "%~dp0\.."
 set APP_NAME=FASJornada
 
 echo.
-set /p VERSION=Digite a versao (ex: 6.2.1): 
+set /p VERSION=Digite a versao (ex: 8.0.1):
 
 if "%VERSION%"=="" (
     echo Versao nao informada.
@@ -15,8 +15,18 @@ if "%VERSION%"=="" (
     exit /b 1
 )
 
+for /f "tokens=1-4 delims=." %%a in ("%VERSION%") do (
+    set VERSION_MAJOR=%%a
+    set VERSION_MINOR=%%b
+    set VERSION_PATCH=%%c
+    set VERSION_BUILD=%%d
+)
+if "%VERSION_MINOR%"=="" set VERSION_MINOR=0
+if "%VERSION_PATCH%"=="" set VERSION_PATCH=0
+if "%VERSION_BUILD%"=="" set VERSION_BUILD=0
+
 set RELEASE_DIR=releases
-set ZIP_NAME=%RELEASE_DIR%\%APP_NAME%_v%VERSION%.zip
+set ZIP_NAME=%RELEASE_DIR%\%APP_NAME%_v%VERSION%_portable.zip
 set COMMIT_MSG=Release v%VERSION% - build automatizado
 
 echo.
@@ -33,8 +43,8 @@ echo [2/7] Atualizando version_info.txt...
 (
 echo VSVersionInfo(
 echo   ffi=FixedFileInfo(
-echo     filevers=(%VERSION:.=,%,0),
-echo     prodvers=(%VERSION:.=,%,0),
+echo     filevers=(%VERSION_MAJOR%,%VERSION_MINOR%,%VERSION_PATCH%,%VERSION_BUILD%),
+echo     prodvers=(%VERSION_MAJOR%,%VERSION_MINOR%,%VERSION_PATCH%,%VERSION_BUILD%),
 echo     mask=0x3f,
 echo     flags=0x0,
 echo     OS=0x40004,
@@ -61,6 +71,8 @@ echo     VarFileInfo([VarStruct('Translation', [1033, 1200])])
 echo   ]
 echo )
 ) > version_info.txt
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command "(Get-Content 'build_tools\FASJornada.iss' -Raw) -replace '#define MyAppVersion \"[^\"]+\"', '#define MyAppVersion \"%VERSION%\"' | Set-Content 'build_tools\FASJornada.iss' -Encoding UTF8"
 
 echo [3/7] Preparando pasta releases...
 if not exist %RELEASE_DIR% mkdir %RELEASE_DIR%
