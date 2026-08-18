@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## Em desenvolvimento
+
+- diagnóstico somente leitura das conexões RHiD, Microsoft, workspace e modelo
+- isolamento do destino Power BI para permitir a futura migração do modelo Push
+  para Fabric Lakehouse/OneLake sem alterar a preparação dos indicadores
+- automação de CI/release, hashes e assinatura Authenticode opcional
+- perfis visuais responsivos sem barras de rolagem
+
 ## 8.1 — 2026-08-18
 
 - identificação de homônimos pela matrícula completa

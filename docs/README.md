@@ -7,6 +7,8 @@ Os documentos refletem o estado atual da branch de desenvolvimento.
 - [Referência dos módulos](REFERENCIA_MODULOS.md): responsabilidade de cada arquivo Python.
 - [Fluxos de processamento](FLUXOS.md): CSV, RHiD, cálculo e saída Excel.
 - [Integração RHiD](INTEGRACAO_RHID.md): autenticação, catálogo, geração e download.
+- [Integração Power BI](INTEGRACAO_POWER_BI.md): autenticação Microsoft, modelo analítico e envio.
+- [Migração para Microsoft Fabric](MIGRACAO_POWER_BI_FABRIC.md): destino futuro, etapas e critérios de corte.
 - [Segurança e privacidade](SEGURANCA_E_PRIVACIDADE.md): credenciais, CPF, temporários e dados locais.
 - [Desenvolvimento e testes](DESENVOLVIMENTO.md): ambiente, comandos e estratégia de testes.
 - [Instalador e empacotamento](INSTALADOR.md): EXE, instalador e artefatos.

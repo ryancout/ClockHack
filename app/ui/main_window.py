@@ -27,7 +27,14 @@ from app.services.rhid_credentials_service import (
     RhidCredentialService,
 )
 from app.ui.navigation import PaginaInterface
-from app.ui.report_pages import CsvPage, HomePage, ProcessingPage, SuccessPage
+from app.ui.report_pages import (
+    CsvPage,
+    DiagnosticsPage,
+    HomePage,
+    ProcessingPage,
+    SuccessPage,
+)
+from app.ui.responsive import LayoutProfile, choose_layout_profile
 from app.ui.rhid_page import (
     ETAPA_DOMINIO,
     ETAPA_ESCOPO,
@@ -78,6 +85,8 @@ class MainWindow:
         self._imagens = []
         self._footer_source = None
         self._footer_photo = None
+        self._layout_profile: LayoutProfile | None = None
+        self._resize_after_id = None
 
         self._credenciais = RhidCredentialService()
         self.controller = MainController(self)
@@ -136,14 +145,19 @@ class MainWindow:
         self.content_host.grid(row=1, column=0, sticky="nsew", padx=18)
         self.content_host.grid_rowconfigure(0, weight=1)
         self.content_host.grid_columnconfigure(0, weight=1)
-        # Páginas roláveis não podem aumentar a geometria da janela e ocultar
-        # o cabeçalho/rodapé; elas devem se adaptar ao espaço disponível.
+        # As páginas se adaptam ao espaço disponível sem barras de rolagem.
         self.content_host.grid_propagate(False)
 
         self.home_page = HomePage(
             self.content_host,
             self._abrir_fluxo_csv,
             self._abrir_fluxo_rhid,
+            self._abrir_diagnosticos,
+        )
+        self.diagnostics_page = DiagnosticsPage(
+            self.content_host,
+            self._voltar_para_inicio,
+            self._verificar_conexoes,
         )
         self.csv_page = CsvPage(
             self.content_host,
@@ -169,9 +183,11 @@ class MainWindow:
             self.controller.abrir_pasta_gerada,
             self._gerar_outro_relatorio,
             self._voltar_para_inicio,
+            ao_powerbi=self.controller.acao_ultimo_resultado_powerbi,
         )
         self._paginas = {
             PaginaInterface.INICIO: self.home_page,
+            PaginaInterface.DIAGNOSTICOS: self.diagnostics_page,
             PaginaInterface.CSV: self.csv_page,
             PaginaInterface.RHID_LOGIN: self.rhid_page,
             PaginaInterface.RHID_DOMINIO: self.rhid_page,
@@ -202,10 +218,13 @@ class MainWindow:
         self.label_arquivo = self.csv_page.label_arquivo
 
         self._montar_rodape()
+        self.root.bind("<Configure>", self._ao_redimensionar, add="+")
+        self.root.after_idle(self._atualizar_densidade)
         self.mostrar_pagina(PaginaInterface.INICIO)
 
     def _montar_cabecalho(self) -> None:
         cabecalho = ctk.CTkFrame(self.root, fg_color=BG_APP, corner_radius=0)
+        self._cabecalho = cabecalho
         cabecalho.grid(row=0, column=0, sticky="ew", padx=24, pady=(2, 0))
         cabecalho.grid_columnconfigure((0, 2), weight=1, uniform="cabecalho")
 
@@ -252,15 +271,48 @@ class MainWindow:
             highlightthickness=0,
         )
         rodape.grid(row=2, column=0, sticky="ew")
+        self._footer_canvas = rodape
         footer_path = resource_path("app/assets/footer_pattern.png")
         if os.path.exists(footer_path):
             try:
                 self._footer_source = Image.open(footer_path).convert("RGB")
-                self._footer_canvas = rodape
                 rodape.bind("<Configure>", self._redesenhar_rodape, add="+")
                 return
             except Exception:
                 logger.exception("Falha ao carregar a faixa visual da aplicação.")
+
+    def _ao_redimensionar(self, evento) -> None:
+        if evento.widget is not self.root:
+            return
+        if self._resize_after_id is not None:
+            self.root.after_cancel(self._resize_after_id)
+        self._resize_after_id = self.root.after(80, self._atualizar_densidade)
+
+    def _atualizar_densidade(self) -> None:
+        self._resize_after_id = None
+        profile = choose_layout_profile(
+            self.root.winfo_width(),
+            self.root.winfo_height(),
+        )
+        if profile == self._layout_profile:
+            return
+        self._layout_profile = profile
+        ctk.set_widget_scaling(profile.widget_scaling)
+        self._cabecalho.grid_configure(
+            padx=profile.header_padding,
+            pady=(2, 0),
+        )
+        self.content_host.grid_configure(padx=profile.content_padding)
+        self._footer_canvas.configure(height=profile.footer_height)
+        for page in {
+            self.home_page,
+            self.csv_page,
+            self.processing_page,
+            self.success_page,
+            self.diagnostics_page,
+        }:
+            page.aplicar_densidade(profile)
+        self.rhid_page.aplicar_densidade(profile)
 
     def _redesenhar_rodape(self, evento) -> None:
         if self._footer_source is None or evento.width < 2 or evento.height < 2:
@@ -319,6 +371,15 @@ class MainWindow:
         if self.controller.processamento_em_andamento:
             return
         self.mostrar_pagina(PaginaInterface.INICIO)
+
+    def _abrir_diagnosticos(self) -> None:
+        if self.controller.processamento_em_andamento:
+            return
+        self.mostrar_pagina(PaginaInterface.DIAGNOSTICOS)
+
+    def _verificar_conexoes(self) -> None:
+        email, senha, dominio, _lembrar = self.rhid_page.obter_credenciais_digitadas()
+        self.controller.verificar_conexoes(email, senha, dominio)
 
     def _gerar_outro_relatorio(self) -> None:
         if self._fluxo_atual == "rhid":
@@ -412,6 +473,10 @@ class MainWindow:
         self.success_page.definir_abertura_habilitada(
             self._abrir_arquivo_habilitado,
             self._abrir_pasta_habilitado,
+        )
+        self.success_page.definir_powerbi_ocupado(False)
+        self.success_page.definir_powerbi_enviado(
+            bool(isinstance(resultado, dict) and resultado.get("powerbi_dataset_id"))
         )
 
     def _ao_tentar_fechar(self) -> None:
@@ -514,6 +579,36 @@ class MainWindow:
 
     def exibir_erro_rhid(self, mensagem):
         self.rhid_page.exibir_erro(mensagem)
+
+    # --- Integração Power BI -------------------------------------------
+    def definir_powerbi_ocupado(self, ocupado):
+        self.success_page.definir_powerbi_ocupado(bool(ocupado))
+
+    def definir_powerbi_enviado(self, enviado):
+        self.success_page.definir_powerbi_enviado(bool(enviado))
+
+    def atualizar_progresso_powerbi(self, valor, mensagem=""):
+        if mensagem:
+            self.success_page.atualizar_status(mensagem, "info")
+
+    def exibir_sucesso_powerbi(self, mensagem):
+        self.success_page.atualizar_status(mensagem, "success")
+
+    def exibir_erro_powerbi(self, mensagem):
+        self.success_page.atualizar_status(mensagem, "error")
+
+    # --- Diagnóstico das integrações -----------------------------------
+    def reiniciar_diagnostico(self):
+        self.diagnostics_page.reiniciar()
+
+    def definir_diagnostico_ocupado(self, ocupado):
+        self.diagnostics_page.definir_ocupado(bool(ocupado))
+
+    def atualizar_diagnostico(self, chave, estado, mensagem):
+        self.diagnostics_page.atualizar(str(chave), str(estado), str(mensagem))
+
+    def finalizar_diagnostico(self, mensagem, estado="info"):
+        self.diagnostics_page.finalizar(str(mensagem), str(estado))
 
     # --- Fachada usada pelo controller ----------------------------------
     def atualizar_departamentos(self, departamentos, selecionado="Todos"):

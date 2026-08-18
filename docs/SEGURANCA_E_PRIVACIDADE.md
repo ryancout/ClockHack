@@ -26,6 +26,7 @@ Dados da aplicação ficam sob o perfil do usuário, no diretório legado
 - `data/preferences.json`;
 - `data/history.json`;
 - `data/audit.json`;
+- `data/powerbi_sends.json`, com hashes e metadados técnicos, sem conteúdo de jornada;
 - `logs/app.log` e rotações;
 - credencial DPAPI, somente quando necessária.
 
@@ -36,9 +37,19 @@ sistema operacional, processados e removidos em bloco `finally`. Falha de remoç
 ## Rede e distribuição
 
 - a integração usa HTTPS com os serviços oficiais configurados no cliente;
+- o login do Power BI ocorre no navegador pela Microsoft Identity Platform; a
+  senha Microsoft não passa pelo FAS Jornada e o token fica somente em memória;
+- o modelo analítico recebe nome, matrícula e dados de jornada, mas nunca CPF;
+- IDs de aplicativo, diretório e workspace não são segredos e não concedem
+  acesso sem uma conta corporativa autorizada;
 - não existe servidor próprio nem banco de dados do FAS Jornada;
 - builds e instaladores não incluem logs, dados locais, `.git`, testes ou caches;
 - releases sem assinatura digital comercial podem gerar alerta do Windows.
+- dependências reutilizáveis dos workflows GitHub Actions são fixadas pelo hash
+  completo do commit, reduzindo risco de troca indireta da ação;
+- cada release inclui `SHA256SUMS.txt` para verificação dos downloads;
+- a assinatura Authenticode é opcional e usa secrets do GitHub somente nas
+  etapas de assinatura; o certificado não é armazenado no repositório.
 
 ## Checklist antes de publicar
 
@@ -47,3 +58,5 @@ sistema operacional, processados e removidos em bloco `finally`. Falha de remoç
 3. Gerar artefatos a partir de commit limpo e versionado.
 4. Publicar hashes SHA-256 junto dos downloads.
 5. Não substituir silenciosamente artefatos de uma tag já divulgada.
+6. Quando houver certificado corporativo, confirmar a assinatura Authenticode do
+   executável e do instalador antes da publicação.

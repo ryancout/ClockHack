@@ -4,6 +4,7 @@ import pytest
 
 from app.ui.report_pages import (
     CsvPage,
+    DiagnosticsPage,
     ProcessingPage,
     SuccessPage,
     _normalizar_progresso,
@@ -141,3 +142,44 @@ def test_success_page_atualiza_metricas_e_caminho_sem_janela_real():
     assert pagina.label_metric_banco_total.configuracao["text"] == "12:30"
     assert pagina.label_metric_banco_saldo.configuracao["text"] == "-03:15"
     assert pagina.label_caminho.configuracao["text"].endswith("jornada.xlsx")
+
+
+def test_success_page_indica_envio_powerbi_em_andamento():
+    pagina = SimpleNamespace(btn_powerbi=WidgetFalso())
+
+    SuccessPage.definir_powerbi_ocupado(pagina, True)
+    assert pagina.btn_powerbi.configuracao == {
+        "state": "disabled",
+        "text": "Enviando ao Power BI...",
+    }
+
+    SuccessPage.definir_powerbi_ocupado(pagina, False)
+    assert pagina.btn_powerbi.configuracao["state"] == "normal"
+    assert pagina.btn_powerbi.configuracao["text"] == "Enviar ao Power BI"
+
+
+def test_success_page_troca_envio_por_abertura_no_desktop():
+    pagina = SimpleNamespace(btn_powerbi=WidgetFalso())
+
+    SuccessPage.definir_powerbi_enviado(pagina, True)
+
+    assert pagina._powerbi_enviado is True
+    assert pagina.btn_powerbi.configuracao["text"] == "Abrir no Power BI Desktop"
+
+
+def test_diagnostico_atualiza_estado_sem_janela_real():
+    pagina = SimpleNamespace(
+        _status_labels={"workspace": WidgetFalso()},
+        _message_labels={"workspace": WidgetFalso()},
+        _STATUS_LABELS=DiagnosticsPage._STATUS_LABELS,
+    )
+
+    DiagnosticsPage.atualizar(
+        pagina,
+        "workspace",
+        "success",
+        "Workspace acessível.",
+    )
+
+    assert pagina._status_labels["workspace"].configuracao["text"] == "Conectado"
+    assert pagina._message_labels["workspace"].configuracao["text"] == "Workspace acessível."

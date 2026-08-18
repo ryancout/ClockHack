@@ -7,6 +7,7 @@ from enum import Enum
 
 class PaginaInterface(str, Enum):
     INICIO = "inicio"
+    DIAGNOSTICOS = "diagnosticos"
     CSV = "csv"
     RHID_LOGIN = "rhid_login"
     RHID_DOMINIO = "rhid_dominio"
@@ -16,6 +17,7 @@ class PaginaInterface(str, Enum):
 
 
 _VOLTAR_PARA = {
+    PaginaInterface.DIAGNOSTICOS: PaginaInterface.INICIO,
     PaginaInterface.CSV: PaginaInterface.INICIO,
     PaginaInterface.RHID_LOGIN: PaginaInterface.INICIO,
     PaginaInterface.RHID_DOMINIO: PaginaInterface.RHID_LOGIN,

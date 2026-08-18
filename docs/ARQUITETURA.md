@@ -6,7 +6,10 @@ O aplicativo separa regras de negócio, geração de relatórios, infraestrutura
 UI (CustomTkinter)
         |
         v
-Controller
+MainController (fachada)
+        |
+        v
+Fluxos CSV / RHiD / Power BI
         |
         v
 Executor em segundo plano
@@ -28,8 +31,21 @@ Domínio    Serviços    Relatórios
 - `app/reports/`: transforma registros de domínio nas abas auxiliares do Excel.
 - `app/services/`: leitura, validação, cálculo, escrita, formatação e orquestração.
 - `app/integrations/`: autenticação e geração/download do CSV nos serviços oficiais do RHiD; não conhece widgets.
-- `app/controllers/`: traduz ações da interface em chamadas aos serviços.
+- a saída opcional para Power BI passa por um adaptador analítico sem CPF e por
+  um cliente REST; ambos executam fora da thread da interface.
+- `app/controllers/`: o `MainController` mantém a API da janela e delega para
+  `CsvWorkflow`, `RhidWorkflow`, `PowerBiWorkflow` e o diagnóstico de conexões.
+  Os fluxos compartilham apenas preferências, seleção e último resultado por
+  meio de `WorkflowState`.
 - `app/ui/`: constrói widgets e apresenta o estado ao usuário.
+
+## Interface responsiva
+
+A janela usa páginas fixas, sem `CTkScrollableFrame`. O módulo
+`app/ui/responsive.py` seleciona um perfil normal, compacto ou denso conforme a
+área cliente disponível. Cada página reduz escala e espaçamentos de modo
+coordenado, mantendo todas as ações visíveis sem alterar o fluxo de navegação.
+O redimensionamento é tratado com debounce para evitar reconstruções excessivas.
 
 ## Fluxo do processamento
 
@@ -89,6 +105,16 @@ Preferências, histórico e auditoria ficam fora do repositório e são tratados
 efeitos auxiliares. O resultado principal é o XLSX: uma falha ao registrar
 histórico ou auditoria é registrada no log, mas não transforma um arquivo salvo
 com sucesso em aparente falha.
+
+O envio ao Power BI calcula uma impressão digital SHA-256 somente dos dados
+analíticos estáveis. IDs, horário de geração e nome do arquivo não participam da
+comparação. Um registro local permite detectar o mesmo conteúdo em outra sessão;
+o usuário ainda pode confirmar um reenvio intencional.
+
+O preparo do snapshot não conhece o transporte. `PowerBiDestination` define a
+fronteira de publicação; hoje ela é implementada por
+`PushSemanticModelDestination`. Um futuro destino Lakehouse poderá receber as
+mesmas linhas sem alterar cálculo, privacidade, deduplicação ou interface.
 
 ## Pontos de extensão
 

@@ -5,6 +5,7 @@ import pytest
 from app.controllers import main_controller as controller_module
 from app.core.exceptions import AppError
 from app.integrations.rhid_client import RhidCompany, RhidDepartment
+from app.services.analytics_service import PowerBiSnapshot
 from app.ui.view_state import EstadoInterface
 
 
@@ -26,6 +27,10 @@ class FakeView:
         self.rhid_progressos = []
         self.rhid_sucessos = []
         self.rhid_erros = []
+        self.powerbi_ocupado = []
+        self.powerbi_progressos = []
+        self.powerbi_sucessos = []
+        self.powerbi_erros = []
 
     def definir_estado(self, estado, total_arquivos=0):
         self.estados.append((estado, total_arquivos))
@@ -77,6 +82,21 @@ class FakeView:
 
     def exibir_erro_rhid(self, mensagem):
         self.rhid_erros.append(mensagem)
+
+    def definir_powerbi_ocupado(self, ocupado):
+        self.powerbi_ocupado.append(ocupado)
+
+    def definir_powerbi_enviado(self, enviado):
+        self.powerbi_enviado = bool(enviado)
+
+    def atualizar_progresso_powerbi(self, valor, mensagem=""):
+        self.powerbi_progressos.append((valor, mensagem))
+
+    def exibir_sucesso_powerbi(self, mensagem):
+        self.powerbi_sucessos.append(mensagem)
+
+    def exibir_erro_powerbi(self, mensagem):
+        self.powerbi_erros.append(mensagem)
 
 
 class TaskRunnerImediato:
@@ -140,7 +160,7 @@ class TaskRunnerPendente:
 
 
 @pytest.fixture
-def controller_isolado(monkeypatch):
+def controller_isolado(monkeypatch, tmp_path):
     preferencias = {
         "last_open_dir": "",
         "last_save_dir": "",
@@ -161,11 +181,15 @@ def controller_isolado(monkeypatch):
     monkeypatch.setattr(controller_module.messagebox, "showinfo", lambda *args, **kwargs: None)
     monkeypatch.setattr(controller_module.messagebox, "showwarning", lambda *args, **kwargs: None)
     monkeypatch.setattr(controller_module.messagebox, "showerror", lambda *args, **kwargs: None)
+    monkeypatch.setattr(controller_module.messagebox, "askyesno", lambda *args, **kwargs: False)
 
     view = FakeView()
     controller = controller_module.MainController(
         view,
         task_runner=TaskRunnerImediato(),
+        powerbi_registry=controller_module.PowerBiSendRegistry(
+            tmp_path / "powerbi_sends.json"
+        ),
     )
     return controller, view, eventos, historicos
 
@@ -821,3 +845,67 @@ def test_relatorio_rhid_aceita_setor_global_com_funcionarios(
 
     assert dialogos == [True]
     assert view.rhid_erros == []
+
+
+def test_envia_ultimo_relatorio_ao_powerbi_em_background(
+    monkeypatch,
+    tmp_path,
+    controller_isolado,
+):
+    controller, view, eventos, _historicos = controller_isolado
+    caminho = tmp_path / "jornada.xlsx"
+    caminho.write_bytes(b"xlsx")
+    controller.ultimo_resultado = {
+        "caminho_saida": str(caminho),
+        "tipo_entrada": "CSV",
+    }
+    snapshot = PowerBiSnapshot(
+        "relatorio-123",
+        ({"IDRelatorio": "relatorio-123", "Funcionario": "Ana"},),
+        str(caminho),
+    )
+
+    class ClienteFalso:
+        autenticado = False
+
+        def login_interativo(self):
+            self.autenticado = True
+            return None
+
+        def obter_ou_criar_dataset(self):
+            return "dataset-456"
+
+        def enviar_linhas(self, _dataset_id, linhas, ao_progresso):
+            ao_progresso(len(linhas), len(linhas))
+            return len(linhas)
+
+    monkeypatch.setattr(
+        controller_module,
+        "preparar_snapshot_powerbi",
+        lambda *_args, **_kwargs: snapshot,
+    )
+    monkeypatch.setattr(controller_module, "PowerBiClient", ClienteFalso)
+    abertos = []
+    monkeypatch.setattr(
+        controller_module,
+        "abrir_relatorio_powerbi_desktop",
+        lambda dataset_id: abertos.append(dataset_id),
+    )
+    monkeypatch.setattr(
+        controller_module,
+        "BackgroundTaskRunner",
+        lambda _agendar: TaskRunnerImediato(),
+    )
+
+    controller.enviar_ultimo_resultado_powerbi()
+
+    assert view.powerbi_ocupado == [True, False]
+    assert view.powerbi_erros == []
+    assert any("1 funcionário enviado" in item for item in view.powerbi_sucessos)
+    assert "Power BI Desktop aberto" in view.powerbi_sucessos[-1]
+    assert controller.ultimo_resultado["powerbi_report_id"] == "relatorio-123"
+    assert controller.ultimo_resultado["powerbi_dataset_id"] == "dataset-456"
+    assert view.powerbi_enviado is True
+    assert abertos == ["dataset-456"]
+    assert eventos[-1][0] == "envio_powerbi"
+    assert eventos[-1][1]["quantidade_linhas"] == 1

@@ -28,6 +28,7 @@ UPLOAD_DIR = RUNTIME_BASE_DIR / "uploads"
 HISTORY_FILE = DATA_DIR / "history.json"
 PREFERENCES_FILE = DATA_DIR / "preferences.json"
 AUDIT_FILE = DATA_DIR / "audit.json"
+POWERBI_SENDS_FILE = DATA_DIR / "powerbi_sends.json"
 
 APP_TITLE = f"{APP_NAME} - V{APP_VERSION}"
 APP_GEOMETRY = "1180x760"
@@ -49,6 +50,15 @@ MIN_FUNCIONARIOS_ALERTA = 1
 MAX_HISTORICO = 100
 MAX_AUDIT = 500
 MAX_FILE_SIZE_MB = 25
+
+# Integração Power BI (aplicativo público/desktop, sem segredo embutido).
+POWER_BI_CLIENT_ID = "1ca7e64b-41ea-4735-9c79-44370c865324"
+POWER_BI_TENANT_ID = "66d8306c-231a-4ac8-ada8-6b3b1b198852"
+POWER_BI_WORKSPACE_ID = "9cc540aa-9bed-42eb-a0b9-2ab650317e12"
+POWER_BI_WORKSPACE_NAME = "FAS Jornada Analytics"
+# O sufixo versiona o contrato de colunas sem apagar modelos/históricos antigos.
+POWER_BI_DATASET_NAME = "FAS Jornada Analytics v2"
+POWER_BI_TABLE_NAME = "Jornada"
 
 BG_APP = "#2a495b"
 BG_CARD = "#ffffff"

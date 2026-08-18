@@ -38,8 +38,12 @@ git diff --check
 | `test_main_controller_states.py` | preflight, lote, progresso, cancelamento e falhas parciais |
 | `test_background_task_runner.py` | isolamento de thread e prevenção de reentrada |
 | `test_report_pages.py`, `test_rhid_page.py` | lógica da interface sem janela real |
+| `test_connection_diagnostics_workflow.py` | verificações externas sem criação ou envio de relatórios |
+| `test_powerbi_destination.py` | fronteira substituível entre snapshot e destino analítico |
 | `test_persistence.py` | schemas e escrita dos arquivos auxiliares |
 | `test_product_identity.py` | nome, versão, AppId e diretório legado |
+| `test_release_version.py` | consistência entre tag, app, EXE e instalador |
+| `test_responsive.py` | perfis de densidade e ausência de telas roláveis |
 
 ## Convenções
 
@@ -56,3 +60,14 @@ git diff --check
 Atualize `CHANGELOG.md`, versão do app, metadados do Windows e instalador. Para
 qualquer correção posterior a uma release publicada, crie uma nova versão em vez
 de substituir silenciosamente os binários associados à tag anterior.
+
+Valide a sincronização antes de criar a tag:
+
+```powershell
+python build_tools\verify_release_version.py
+python build_tools\verify_release_version.py --tag vX.X.X
+```
+
+O workflow `.github/workflows/ci.yml` executa os testes e verificadores em pushes
+e pull requests para `main`. O workflow de release roda somente por tag e recusa
+versão divergente ou release já existente.

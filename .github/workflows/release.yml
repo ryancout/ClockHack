@@ -1,0 +1,153 @@
+name: Release Windows
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-release:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      HAS_SIGNING_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 != '' }}
+    steps:
+      - name: Checkout tagged source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Python 3.11
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
+
+      - name: Ensure tag and product versions match
+        shell: pwsh
+        run: python build_tools/verify_release_version.py --tag $env:GITHUB_REF_NAME
+
+      - name: Validate source
+        run: |
+          python -m pytest -q
+          python -m pyright app
+          python -m compileall -q app main.py
+          python -m pip check
+
+      - name: Build executable
+        run: pyinstaller --clean --noconfirm main.spec
+
+      - name: Sign executable when certificate is configured
+        if: ${{ env.HAS_SIGNING_CERTIFICATE == 'true' }}
+        shell: pwsh
+        env:
+          SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $certificate = Join-Path $env:RUNNER_TEMP 'fas-jornada-signing.pfx'
+          [IO.File]::WriteAllBytes(
+            $certificate,
+            [Convert]::FromBase64String($env:SIGNING_CERTIFICATE_BASE64)
+          )
+          $signTool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Filter signtool.exe -Recurse |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          if (-not $signTool) { throw 'SignTool não encontrado no runner.' }
+          & $signTool.FullName sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /f $certificate /p $env:SIGNING_CERTIFICATE_PASSWORD dist\FASJornada.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao assinar o executável.' }
+          Remove-Item -LiteralPath $certificate -Force
+
+      - name: Warn when release is unsigned
+        if: ${{ env.HAS_SIGNING_CERTIFICATE != 'true' }}
+        shell: pwsh
+        run: Write-Warning 'Certificado não configurado; os artefatos serão publicados sem assinatura Authenticode.'
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          & 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe' 'build_tools\FASJornada.iss'
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao criar o instalador.' }
+
+      - name: Sign installer when certificate is configured
+        if: ${{ env.HAS_SIGNING_CERTIFICATE == 'true' }}
+        shell: pwsh
+        env:
+          SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+          SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $version = (python -c "from app.core.version import APP_VERSION; print(APP_VERSION)").Trim()
+          $installer = "dist\FASJornada_Setup_$version.exe"
+          $certificate = Join-Path $env:RUNNER_TEMP 'fas-jornada-signing.pfx'
+          [IO.File]::WriteAllBytes(
+            $certificate,
+            [Convert]::FromBase64String($env:SIGNING_CERTIFICATE_BASE64)
+          )
+          $signTool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Filter signtool.exe -Recurse |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          & $signTool.FullName sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /f $certificate /p $env:SIGNING_CERTIFICATE_PASSWORD $installer
+          if ($LASTEXITCODE -ne 0) { throw 'Falha ao assinar o instalador.' }
+          Remove-Item -LiteralPath $certificate -Force
+
+      - name: Package portable build and checksums
+        shell: pwsh
+        run: |
+          $version = (python -c "from app.core.version import APP_VERSION; print(APP_VERSION)").Trim()
+          Compress-Archive -LiteralPath 'dist\FASJornada.exe' -DestinationPath "dist\FASJornada_v$version`_portable.zip" -Force
+          $files = @(
+            "dist\FASJornada_Setup_$version.exe",
+            "dist\FASJornada_v$version`_portable.zip"
+          )
+          $lines = foreach ($file in $files) {
+            $hash = Get-FileHash -LiteralPath $file -Algorithm SHA256
+            "$($hash.Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($file))"
+          }
+          Set-Content -LiteralPath 'dist\SHA256SUMS.txt' -Value $lines -Encoding ascii
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: FASJornada-${{ github.ref_name }}
+          path: |
+            dist/FASJornada_Setup_*.exe
+            dist/FASJornada_v*_portable.zip
+            dist/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Refuse to overwrite an existing release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view $env:GITHUB_REF_NAME 2>$null
+          if ($LASTEXITCODE -eq 0) { throw "A release $env:GITHUB_REF_NAME já existe." }
+          exit 0
+
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (python -c "from app.core.version import APP_VERSION; print(APP_VERSION)").Trim()
+          gh release create $env:GITHUB_REF_NAME `
+            "dist\FASJornada_Setup_$version.exe" `
+            "dist\FASJornada_v$version`_portable.zip" `
+            'dist\SHA256SUMS.txt' `
+            --title "FAS Jornada v$version" `
+            --generate-notes `
+            --verify-tag

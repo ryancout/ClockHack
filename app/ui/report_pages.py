@@ -11,6 +11,8 @@ from collections.abc import Callable, Iterable
 
 import customtkinter as ctk
 
+from app.ui.responsive import LayoutDensity, LayoutProfile
+
 
 FAS_BACKGROUND = "#2A495B"
 CARD_BACKGROUND = "#FFFFFF"
@@ -58,6 +60,7 @@ class _ReportPage(ctk.CTkFrame):
 
     def __init__(self, parent) -> None:
         super().__init__(parent, fg_color=FAS_BACKGROUND, corner_radius=0)
+        self._main_cards: list[tuple[ctk.CTkFrame, int, int]] = []
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
@@ -79,19 +82,21 @@ class _ReportPage(ctk.CTkFrame):
         sticky = "nsew" if parent is self else "ew"
         card.grid(row=0, column=0, sticky=sticky, padx=padx, pady=pady)
         card.grid_columnconfigure(0, weight=1)
+        if parent is self:
+            self._main_cards.append((card, padx, pady))
         return card
 
-    def _criar_area_rolavel(self) -> ctk.CTkScrollableFrame:
-        area = ctk.CTkScrollableFrame(
-            self,
-            fg_color=FAS_BACKGROUND,
-            corner_radius=0,
-            scrollbar_button_color="#8195A0",
-            scrollbar_button_hover_color="#A3B2BA",
-        )
-        area.grid(row=0, column=0, sticky="nsew")
-        area.grid_columnconfigure(0, weight=1)
-        return area
+    def aplicar_densidade(self, profile: LayoutProfile) -> None:
+        """Reduz apenas margens externas; os controles mantêm sua hierarquia."""
+
+        for card, normal_padx, normal_pady in self._main_cards:
+            if profile.density is LayoutDensity.DENSE:
+                padx, pady = min(normal_padx, 8), min(normal_pady, 5)
+            elif profile.density is LayoutDensity.COMPACT:
+                padx, pady = min(normal_padx, 16), min(normal_pady, 10)
+            else:
+                padx, pady = normal_padx, normal_pady
+            card.grid_configure(padx=padx, pady=pady)
 
     @staticmethod
     def _titulo(parent, titulo: str, subtitulo: str, *, row: int) -> int:
@@ -101,7 +106,7 @@ class _ReportPage(ctk.CTkFrame):
             font=("Segoe UI", 25, "bold"),
             text_color=TEXT_PRIMARY,
             anchor="w",
-        ).grid(row=row, column=0, sticky="ew", padx=28, pady=(14, 3))
+        ).grid(row=row, column=0, sticky="ew", padx=28, pady=(8, 2))
         ctk.CTkLabel(
             parent,
             text=subtitulo,
@@ -110,7 +115,7 @@ class _ReportPage(ctk.CTkFrame):
             anchor="w",
             justify="left",
             wraplength=680,
-        ).grid(row=row + 1, column=0, sticky="ew", padx=28, pady=(0, 18))
+        ).grid(row=row + 1, column=0, sticky="ew", padx=28, pady=(0, 10))
         return row + 2
 
     @staticmethod
@@ -138,6 +143,7 @@ class HomePage(_ReportPage):
         parent,
         ao_csv: Callable[[], None],
         ao_rhid: Callable[[], None],
+        ao_diagnostico: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(parent)
         card = self._criar_card(padx=32, pady=30)
@@ -146,7 +152,7 @@ class HomePage(_ReportPage):
         apresentacao = ctk.CTkFrame(
             card,
             width=560,
-            height=350,
+            height=390,
             fg_color="transparent",
         )
         apresentacao.grid(row=0, column=0)
@@ -175,13 +181,13 @@ class HomePage(_ReportPage):
         acoes = ctk.CTkFrame(
             apresentacao,
             width=360,
-            height=130,
+            height=188,
             fg_color="transparent",
         )
         acoes.grid(row=3, column=0)
         acoes.grid_propagate(False)
         acoes.grid_columnconfigure(0, weight=1)
-        acoes.grid_rowconfigure((0, 1), weight=1)
+        acoes.grid_rowconfigure((0, 1, 2), weight=1)
 
         self.btn_csv = ctk.CTkButton(
             acoes,
@@ -205,6 +211,164 @@ class HomePage(_ReportPage):
         )
         self.btn_rhid.grid(row=1, column=0, sticky="ew", pady=(6, 0))
 
+        self.btn_diagnostico = ctk.CTkButton(
+            acoes,
+            text="Verificar conexões",
+            height=38,
+            fg_color="transparent",
+            hover_color=BOX_BACKGROUND,
+            text_color=TEXT_PRIMARY,
+            border_width=1,
+            border_color=BORDER_COLOR,
+            font=("Segoe UI", 11, "bold"),
+            command=ao_diagnostico or (lambda: None),
+        )
+        self.btn_diagnostico.grid(row=2, column=0, sticky="ew", pady=(12, 0))
+
+
+class DiagnosticsPage(_ReportPage):
+    """Verifica serviços externos sem criar nem enviar relatórios."""
+
+    _TITLES = {
+        "rhid": "RHiD",
+        "microsoft": "Conta Microsoft",
+        "workspace": "Workspace Power BI",
+        "powerbi_model": "Modelo analítico",
+    }
+    _STATUS_LABELS = {
+        "pending": "Não verificado",
+        "running": "Verificando...",
+        "success": "Conectado",
+        "warning": "Atenção",
+        "error": "Falhou",
+        "skipped": "Não verificado",
+    }
+
+    def __init__(
+        self,
+        parent,
+        ao_voltar: Callable[[], None],
+        ao_verificar: Callable[[], None],
+    ) -> None:
+        super().__init__(parent)
+        card = self._criar_card(padx=42, pady=8)
+        self.btn_voltar = self._botao_voltar(card, ao_voltar)
+        self.btn_voltar.grid(row=0, column=0, sticky="w", padx=28, pady=(10, 0))
+        row = self._titulo(
+            card,
+            "Verificar conexões",
+            "Teste os acessos externos sem gerar ou enviar um relatório.",
+            row=1,
+        )
+
+        checks = ctk.CTkFrame(card, fg_color="transparent")
+        checks.grid(row=row, column=0, sticky="ew", padx=28)
+        checks.grid_columnconfigure((0, 1), weight=1, uniform="checks")
+        self._status_labels: dict[str, ctk.CTkLabel] = {}
+        self._message_labels: dict[str, ctk.CTkLabel] = {}
+        for index, (key, title) in enumerate(self._TITLES.items()):
+            box = ctk.CTkFrame(
+                checks,
+                fg_color=BOX_BACKGROUND,
+                corner_radius=12,
+                border_width=1,
+                border_color=BORDER_COLOR,
+            )
+            box.grid(
+                row=index // 2,
+                column=index % 2,
+                sticky="nsew",
+                padx=(0, 5) if index % 2 == 0 else (5, 0),
+                pady=(0, 5) if index < 2 else (5, 0),
+            )
+            box.grid_columnconfigure(0, weight=1)
+            ctk.CTkLabel(
+                box,
+                text=title,
+                font=("Segoe UI", 11, "bold"),
+                text_color=TEXT_PRIMARY,
+                anchor="w",
+            ).grid(row=0, column=0, sticky="ew", padx=14, pady=(9, 1))
+            status = ctk.CTkLabel(
+                box,
+                text="Não verificado",
+                font=("Segoe UI", 10, "bold"),
+                text_color=TEXT_MUTED,
+                anchor="w",
+            )
+            status.grid(row=1, column=0, sticky="ew", padx=14)
+            message = ctk.CTkLabel(
+                box,
+                text="Aguardando verificação.",
+                font=("Segoe UI", 9),
+                text_color=TEXT_MUTED,
+                anchor="w",
+                justify="left",
+                wraplength=360,
+            )
+            message.grid(row=2, column=0, sticky="ew", padx=14, pady=(1, 9))
+            self._status_labels[key] = status
+            self._message_labels[key] = message
+
+        ctk.CTkLabel(
+            card,
+            text=(
+                "Destino atual: modelo Push. A criação de novos modelos possui "
+                "suporte anunciado até 31/10/2027; migração para Fabric Lakehouse planejada."
+            ),
+            font=("Segoe UI", 9),
+            text_color=WARNING,
+            anchor="w",
+            justify="left",
+            wraplength=780,
+        ).grid(row=row + 1, column=0, sticky="ew", padx=28, pady=(9, 5))
+
+        self.label_summary = ctk.CTkLabel(
+            card,
+            text="Clique em Verificar agora para começar.",
+            font=("Segoe UI", 10, "bold"),
+            text_color=TEXT_MUTED,
+            anchor="w",
+        )
+        self.label_summary.grid(row=row + 2, column=0, sticky="ew", padx=28, pady=3)
+        self.btn_verify = ctk.CTkButton(
+            card,
+            text="Verificar agora",
+            height=40,
+            fg_color=PRIMARY,
+            hover_color=PRIMARY_HOVER,
+            font=("Segoe UI", 11, "bold"),
+            command=ao_verificar,
+        )
+        self.btn_verify.grid(row=row + 3, column=0, sticky="ew", padx=28, pady=(5, 12))
+
+    def reiniciar(self) -> None:
+        for key in self._TITLES:
+            self.atualizar(key, "pending", "Aguardando verificação.")
+        self.label_summary.configure(
+            text="Verificando conexões...", text_color=TEXT_MUTED
+        )
+
+    def atualizar(self, key: str, status: str, message: str) -> None:
+        if key not in self._status_labels:
+            return
+        color_type = "warning" if status in {"warning", "skipped"} else status
+        self._status_labels[key].configure(
+            text=self._STATUS_LABELS.get(status, status),
+            text_color=_cor_status(color_type),
+        )
+        self._message_labels[key].configure(text=str(message))
+
+    def definir_ocupado(self, busy: bool) -> None:
+        self.btn_verify.configure(
+            state="disabled" if busy else "normal",
+            text="Verificando..." if busy else "Verificar novamente",
+        )
+        self.btn_voltar.configure(state="disabled" if busy else "normal")
+
+    def finalizar(self, message: str, status: str) -> None:
+        self.label_summary.configure(text=str(message), text_color=_cor_status(status))
+
 
 class CsvPage(_ReportPage):
     """Seleção e configuração dos relatórios originados em CSV."""
@@ -219,8 +383,7 @@ class CsvPage(_ReportPage):
     ) -> None:
         super().__init__(parent)
         self._ao_processar = ao_processar
-        self._rolagem = self._criar_area_rolavel()
-        card = self._criar_card(parent=self._rolagem, pady=4)
+        card = self._criar_card(pady=4)
 
         self.btn_voltar = self._botao_voltar(card, ao_voltar)
         self.btn_voltar.grid(row=0, column=0, sticky="w", padx=28, pady=(12, 0))
@@ -548,16 +711,13 @@ class SuccessPage(_ReportPage):
         ao_abrir_pasta: Callable[[], None],
         ao_gerar_outro: Callable[[], None],
         ao_voltar: Callable[[], None] | None = None,
+        ao_powerbi: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(parent)
-        self._rolagem = self._criar_area_rolavel()
-        card = self._criar_card(
-            parent=self._rolagem,
-            padx=42,
-            pady=16,
-        )
+        self._powerbi_enviado = False
+        card = self._criar_card(padx=42, pady=4)
         self.btn_voltar = self._botao_voltar(card, ao_voltar or (lambda: None))
-        self.btn_voltar.grid(row=0, column=0, sticky="w", padx=28, pady=(22, 0))
+        self.btn_voltar.grid(row=0, column=0, sticky="w", padx=28, pady=(10, 0))
         linha = self._titulo(
             card,
             "Relatório salvo",
@@ -588,7 +748,7 @@ class SuccessPage(_ReportPage):
             border_width=1,
             border_color=BORDER_COLOR,
         )
-        caminho_box.grid(row=linha + 1, column=0, sticky="ew", padx=28, pady=(14, 8))
+        caminho_box.grid(row=linha + 1, column=0, sticky="ew", padx=28, pady=(10, 6))
         caminho_box.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(
             caminho_box,
@@ -596,7 +756,7 @@ class SuccessPage(_ReportPage):
             font=("Segoe UI", 10, "bold"),
             text_color=TEXT_MUTED,
             anchor="w",
-        ).grid(row=0, column=0, sticky="ew", padx=14, pady=(11, 2))
+        ).grid(row=0, column=0, sticky="ew", padx=14, pady=(8, 2))
         self.label_caminho = ctk.CTkLabel(
             caminho_box,
             text="Nenhum caminho informado.",
@@ -606,7 +766,7 @@ class SuccessPage(_ReportPage):
             justify="left",
             wraplength=650,
         )
-        self.label_caminho.grid(row=1, column=0, sticky="ew", padx=14, pady=(0, 11))
+        self.label_caminho.grid(row=1, column=0, sticky="ew", padx=14, pady=(0, 8))
 
         self.label_status = ctk.CTkLabel(
             card,
@@ -617,7 +777,7 @@ class SuccessPage(_ReportPage):
             justify="left",
             wraplength=680,
         )
-        self.label_status.grid(row=linha + 2, column=0, sticky="ew", padx=28, pady=(6, 12))
+        self.label_status.grid(row=linha + 2, column=0, sticky="ew", padx=28, pady=(4, 7))
 
         acoes = ctk.CTkFrame(card, fg_color="transparent")
         acoes.grid(row=linha + 3, column=0, sticky="ew", padx=28)
@@ -625,7 +785,7 @@ class SuccessPage(_ReportPage):
         self.btn_abrir = ctk.CTkButton(
             acoes,
             text="Abrir arquivo",
-            height=40,
+            height=36,
             fg_color=BOX_BACKGROUND,
             hover_color="#E6EDF1",
             text_color=TEXT_PRIMARY,
@@ -638,7 +798,7 @@ class SuccessPage(_ReportPage):
         self.btn_abrir_pasta = ctk.CTkButton(
             acoes,
             text="Abrir pasta",
-            height=40,
+            height=36,
             fg_color=BOX_BACKGROUND,
             hover_color="#E6EDF1",
             text_color=TEXT_PRIMARY,
@@ -649,21 +809,39 @@ class SuccessPage(_ReportPage):
         )
         self.btn_abrir_pasta.grid(row=0, column=1, sticky="ew", padx=(6, 0))
 
+        self.btn_powerbi = ctk.CTkButton(
+            card,
+            text="Enviar ao Power BI",
+            height=38,
+            fg_color="#F2C811",
+            hover_color="#DDB600",
+            text_color="#172B3A",
+            font=("Segoe UI", 11, "bold"),
+            command=ao_powerbi or (lambda: None),
+        )
+        self.btn_powerbi.grid(
+            row=linha + 4,
+            column=0,
+            sticky="ew",
+            padx=28,
+            pady=(8, 0),
+        )
+
         self.btn_gerar_outro = ctk.CTkButton(
             card,
             text="Gerar outro relatório",
-            height=44,
+            height=40,
             fg_color=PRIMARY,
             hover_color=PRIMARY_HOVER,
             font=("Segoe UI", 12, "bold"),
             command=ao_gerar_outro,
         )
         self.btn_gerar_outro.grid(
-            row=linha + 4,
+            row=linha + 5,
             column=0,
             sticky="ew",
             padx=28,
-            pady=(14, 26),
+            pady=(8, 12),
         )
 
     @staticmethod
@@ -682,14 +860,14 @@ class SuccessPage(_ReportPage):
             text=titulo,
             font=("Segoe UI", 10, "bold"),
             text_color=TEXT_MUTED,
-        ).pack(pady=(12, 2))
+        ).pack(pady=(8, 1))
         label_valor = ctk.CTkLabel(
             box,
             text=valor,
             font=("Segoe UI", 20, "bold"),
             text_color=TEXT_PRIMARY,
         )
-        label_valor.pack(pady=(0, 12))
+        label_valor.pack(pady=(0, 8))
         return box, label_valor
 
     def atualizar_metricas(
@@ -728,9 +906,31 @@ class SuccessPage(_ReportPage):
         self.btn_abrir.configure(state=_estado_widget(arquivo))
         self.btn_abrir_pasta.configure(state=_estado_widget(pasta))
 
+    def definir_powerbi_ocupado(self, ocupado: bool) -> None:
+        enviado = bool(getattr(self, "_powerbi_enviado", False))
+        self.btn_powerbi.configure(
+            state="disabled" if ocupado else "normal",
+            text=(
+                "Abrindo o Power BI Desktop..."
+                if ocupado and enviado
+                else "Enviando ao Power BI..."
+                if ocupado
+                else "Abrir no Power BI Desktop"
+                if enviado
+                else "Enviar ao Power BI"
+            ),
+        )
+
+    def definir_powerbi_enviado(self, enviado: bool) -> None:
+        self._powerbi_enviado = bool(enviado)
+        self.btn_powerbi.configure(
+            text="Abrir no Power BI Desktop" if enviado else "Enviar ao Power BI"
+        )
+
 
 __all__ = [
     "CsvPage",
+    "DiagnosticsPage",
     "FAS_BACKGROUND",
     "HomePage",
     "ProcessingPage",

@@ -26,6 +26,7 @@ from app.core.config import (
     PRIMARY,
     SUCCESS,
 )
+from app.ui.responsive import LayoutDensity, LayoutProfile
 
 
 TODOS_OS_SETORES = "Todos os setores"
@@ -298,6 +299,7 @@ class RhidPage(ctk.CTkFrame):
 
     def _montar_cabecalho(self) -> None:
         cabecalho = ctk.CTkFrame(self, fg_color="transparent")
+        self._cabecalho = cabecalho
         cabecalho.grid(row=0, column=0, sticky="ew", padx=24, pady=(8, 5))
         cabecalho.grid_columnconfigure((0, 2), weight=1, uniform="laterais")
         self.btn_voltar = ctk.CTkButton(
@@ -355,6 +357,24 @@ class RhidPage(ctk.CTkFrame):
             wraplength=760,
         )
         self.label_status.grid(row=1, column=0, sticky="ew", pady=(6, 0))
+
+    def aplicar_densidade(self, profile: LayoutProfile) -> None:
+        """Compacta margens do fluxo RHiD sem recorrer a rolagem."""
+
+        if profile.density is LayoutDensity.DENSE:
+            header_pad, content_pad, bottom_pad = 8, 6, 3
+        elif profile.density is LayoutDensity.COMPACT:
+            header_pad, content_pad, bottom_pad = 14, 10, 5
+        else:
+            header_pad, content_pad, bottom_pad = 24, 20, 8
+        self._cabecalho.grid_configure(
+            padx=header_pad,
+            pady=(max(2, bottom_pad), max(2, bottom_pad - 1)),
+        )
+        self._rolagem.grid_configure(
+            padx=content_pad,
+            pady=(0, bottom_pad),
+        )
 
     def _novo_card(self) -> ctk.CTkFrame:
         card = ctk.CTkFrame(
