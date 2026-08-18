@@ -2,29 +2,29 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from app.domain import RegistroFuncionario, obter_final_matricula
+from app.domain import RegistroFuncionario, normalizar_matricula
 
 
 @pytest.mark.parametrize(
     ("matricula", "esperado"),
     [
-        ("123001", "001"),
-        ("MAT-0002", "002"),
+        ("123001", "123001"),
+        ("MAT-0002", "MAT-0002"),
         ("000", "000"),
         ("7", "7"),
-        ("sem-digitos", ""),
+        ("sem-digitos", "sem-digitos"),
         ("", ""),
         (None, ""),
     ],
 )
-def test_obter_final_matricula(matricula, esperado):
-    assert obter_final_matricula(matricula) == esperado
+def test_normalizar_matricula_preserva_identificador_completo(matricula, esperado):
+    assert normalizar_matricula(matricula) == esperado
 
 
 def test_registro_funcionario_armazena_minutos_sem_formatacao():
     registro = RegistroFuncionario(
         nome="Ana Teste",
-        final_matricula="001",
+        matricula="MAT-0001",
         departamento="Operacoes",
         banco_total_minutos=-90,
         banco_saldo_minutos=1530,

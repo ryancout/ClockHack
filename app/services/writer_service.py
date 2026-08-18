@@ -1,5 +1,6 @@
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-from app.services.time_service import formatar_horas, para_minutos
+
+from app.domain import formatar_horas, para_minutos
 
 
 def obter_ultima_linha(ws, col_nome):

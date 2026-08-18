@@ -11,7 +11,6 @@ from app.services.workbook_pipeline_service import obter_departamentos, processa
 
 FIXTURE_CSV = Path(__file__).parent / "fixtures" / "relatorio_contrato_anonimo.csv"
 
-MATRICULAS_COMPLETAS = {"MAT-0001", "MAT-0002", "MAT-0003", "MAT-0004"}
 CPFS_FICTICIOS = {
     "000.000.000-00",
     "111.111.111-11",
@@ -117,11 +116,11 @@ def test_processamento_preserva_homonimos_totais_e_abas(tmp_path):
     ws_principal = wb.worksheets[0]
     cabecalhos = {
         ws_principal.cell(row=1, column=coluna).value: coluna
-        for coluna in range(1, 14)
+        for coluna in range(1, ws_principal.max_column + 1)
     }
     col_nome = cabecalhos["Nome do funcionário"]
-    assert "Número de matrícula" not in cabecalhos
-    col_matricula = cabecalhos["Final da matrícula"]
+    assert "CPF do funcionário" not in cabecalhos
+    col_matricula = cabecalhos["Número de matrícula"]
     col_banco_total = cabecalhos["Banco Total"]
     col_banco_saldo = cabecalhos["Banco Saldo"]
 
@@ -133,36 +132,29 @@ def test_processamento_preserva_homonimos_totais_e_abas(tmp_path):
         for linha in range(2, 6)
         if ws_principal.cell(row=linha, column=col_nome).value == "Ana Teste"
     ]
-    assert homonimos == [("Ana Teste", "001"), ("Ana Teste", "002")]
+    assert homonimos == [("Ana Teste", "MAT-0001"), ("Ana Teste", "MAT-0002")]
 
-    finais_matricula_principal = [
+    matriculas_principal = [
         ws_principal.cell(row=linha, column=col_matricula).value
         for linha in range(2, 6)
     ]
-    assert finais_matricula_principal == ["001", "002", "003", "004"]
-    assert all(
-        isinstance(final, str) and len(final) == 3 and final.isdigit()
-        for final in finais_matricula_principal
-    )
+    assert matriculas_principal == ["MAT-0001", "MAT-0002", "MAT-0003", "MAT-0004"]
+    assert all(isinstance(matricula, str) for matricula in matriculas_principal)
     assert ws_principal.cell(row=6, column=col_banco_total).value == "24:15"
     assert ws_principal.cell(row=6, column=col_banco_saldo).value == "0:00"
 
     ws_saldo = wb["SALDO"]
     assert [cell.value for cell in ws_saldo[1]] == [
         "Nome",
-        "Final da matrícula",
+        "Número de matrícula",
         "Setor",
         "Banco Total",
         "Banco Saldo",
         "Faltas",
     ]
 
-    finais_matricula = [ws_saldo.cell(row=linha, column=2).value for linha in range(2, 6)]
-    assert finais_matricula == ["001", "002", "003", "004"]
-    assert all(
-        isinstance(final, str) and len(final) == 3 and final.isdigit()
-        for final in finais_matricula
-    )
+    matriculas_saldo = [ws_saldo.cell(row=linha, column=2).value for linha in range(2, 6)]
+    assert matriculas_saldo == ["MAT-0001", "MAT-0002", "MAT-0003", "MAT-0004"]
 
     saldos_homonimos = [
         (
@@ -174,8 +166,8 @@ def test_processamento_preserva_homonimos_totais_e_abas(tmp_path):
         if ws_saldo.cell(row=linha, column=1).value == "Ana Teste"
     ]
     assert saldos_homonimos == [
-        ("001", "26:30", "9:15"),
-        ("002", "-2:45", "-10:30"),
+        ("MAT-0001", "26:30", "9:15"),
+        ("MAT-0002", "-2:45", "-10:30"),
     ]
 
     ws_ranking = wb["RANKING"]
@@ -186,8 +178,8 @@ def test_processamento_preserva_homonimos_totais_e_abas(tmp_path):
         if ws_ranking.cell(row=linha, column=1).value == "Funcionário"
     ]
     assert cabecalhos_ranking == [
-        ["Funcionário", "Final da matrícula", "Departamento", "Banco Saldo"],
-        ["Funcionário", "Final da matrícula", "Departamento", "Banco Saldo"],
+        ["Funcionário", "Número de matrícula", "Departamento", "Banco Saldo"],
+        ["Funcionário", "Número de matrícula", "Departamento", "Banco Saldo"],
     ]
 
     ranking_homonimos = sorted(
@@ -198,22 +190,9 @@ def test_processamento_preserva_homonimos_totais_e_abas(tmp_path):
         for linha in range(1, ws_ranking.max_row + 1)
         if ws_ranking.cell(row=linha, column=1).value == "Ana Teste"
     )
-    assert ranking_homonimos == [("001", "9:15"), ("002", "-10:30")]
+    assert ranking_homonimos == [("MAT-0001", "9:15"), ("MAT-0002", "-10:30")]
 
-    for ws in wb.worksheets:
-        valores = {
-            str(cell.value)
-            for linha in ws.iter_rows()
-            for cell in linha
-            if cell.value is not None
-        }
-        assert all(
-            matricula not in valor
-            for valor in valores
-            for matricula in MATRICULAS_COMPLETAS
-        )
-
-    for ws_auxiliar in (ws_saldo, ws_ranking, wb["RESUMO"]):
+    for ws_auxiliar in wb.worksheets:
         valores = {
             str(cell.value)
             for linha in ws_auxiliar.iter_rows()
@@ -252,22 +231,22 @@ def test_filtro_por_departamento_mantem_os_dois_homonimos(tmp_path):
         "Ana Teste",
         "Ana Teste",
     ]
-    assert ws_principal.cell(row=1, column=2).value == "Final da matrícula"
+    assert ws_principal.cell(row=1, column=2).value == "Número de matrícula"
     assert [ws_principal.cell(row=linha, column=2).value for linha in range(2, 4)] == [
-        "001",
-        "002",
+        "MAT-0001",
+        "MAT-0002",
     ]
     assert all(
         isinstance(ws_principal.cell(row=linha, column=2).value, str)
         for linha in range(2, 4)
     )
-    assert ws_principal.cell(row=4, column=12).value == "23:45"
-    assert ws_principal.cell(row=4, column=13).value == "-1:15"
+    assert ws_principal.cell(row=4, column=11).value == "23:45"
+    assert ws_principal.cell(row=4, column=12).value == "-1:15"
 
     ws_saldo = wb["SALDO"]
     assert [ws_saldo.cell(row=linha, column=2).value for linha in range(2, 4)] == [
-        "001",
-        "002",
+        "MAT-0001",
+        "MAT-0002",
     ]
 
 
@@ -290,4 +269,4 @@ def test_processamento_respeita_abas_opcionais(tmp_path):
 
     wb = load_workbook(caminho_saida)
     assert wb.sheetnames == ["Sheet"]
-    assert wb.active.cell(row=1, column=2).value == "Final da matrícula"
+    assert wb.active.cell(row=1, column=2).value == "Número de matrícula"

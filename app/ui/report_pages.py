@@ -34,6 +34,8 @@ def _estado_widget(habilitado: bool, *, somente_leitura: bool = False) -> str:
 
 def _normalizar_progresso(valor: object) -> float:
     """Aceita fração ou percentual e limita o resultado entre zero e um."""
+    if not isinstance(valor, (int, float, str)):
+        return 0.0
     try:
         progresso = float(valor)
     except (TypeError, ValueError):
@@ -410,20 +412,24 @@ class CsvPage(_ReportPage):
         texto_selecionar: str | None = None,
         texto_processar: str | None = None,
     ) -> None:
-        configuracoes_selecao = {
-            "state": _estado_widget(selecionar_habilitado),
-        }
-        if texto_selecionar is not None:
-            configuracoes_selecao["text"] = texto_selecionar
-        self.btn_selecionar.configure(**configuracoes_selecao)
+        estado_selecao = _estado_widget(selecionar_habilitado)
+        if texto_selecionar is None:
+            self.btn_selecionar.configure(state=estado_selecao)
+        else:
+            self.btn_selecionar.configure(
+                state=estado_selecao,
+                text=texto_selecionar,
+            )
         self.btn_limpar.configure(state=_estado_widget(limpar_habilitado))
 
-        configuracoes_processamento = {
-            "state": _estado_widget(processar_habilitado),
-        }
-        if texto_processar is not None:
-            configuracoes_processamento["text"] = texto_processar
-        self.btn_processar.configure(**configuracoes_processamento)
+        estado_processamento = _estado_widget(processar_habilitado)
+        if texto_processar is None:
+            self.btn_processar.configure(state=estado_processamento)
+        else:
+            self.btn_processar.configure(
+                state=estado_processamento,
+                text=texto_processar,
+            )
 
         self.combo_departamento.configure(
             state=_estado_widget(configuracao_habilitada, somente_leitura=True)
@@ -516,10 +522,11 @@ class ProcessingPage(_ReportPage):
         habilitado: bool,
         texto: str | None = None,
     ) -> None:
-        configuracao = {"state": _estado_widget(habilitado)}
-        if texto is not None:
-            configuracao["text"] = texto
-        self.btn_cancelar.configure(**configuracao)
+        estado = _estado_widget(habilitado)
+        if texto is None:
+            self.btn_cancelar.configure(state=estado)
+        else:
+            self.btn_cancelar.configure(state=estado, text=texto)
 
     def iniciar_indeterminado(self) -> None:
         self.progress.configure(mode="indeterminate")
@@ -561,9 +568,15 @@ class SuccessPage(_ReportPage):
         metricas = ctk.CTkFrame(card, fg_color="transparent")
         metricas.grid(row=linha, column=0, sticky="ew", padx=28)
         metricas.grid_columnconfigure((0, 1, 2), weight=1, uniform="metricas")
-        self.metric_funcionarios = self._criar_metrica(metricas, "Funcionários", "0")
-        self.metric_banco_total = self._criar_metrica(metricas, "Banco Total", "--:--")
-        self.metric_banco_saldo = self._criar_metrica(metricas, "Banco Saldo", "--:--")
+        self.metric_funcionarios, self.label_metric_funcionarios = (
+            self._criar_metrica(metricas, "Funcionários", "0")
+        )
+        self.metric_banco_total, self.label_metric_banco_total = (
+            self._criar_metrica(metricas, "Banco Total", "--:--")
+        )
+        self.metric_banco_saldo, self.label_metric_banco_saldo = (
+            self._criar_metrica(metricas, "Banco Saldo", "--:--")
+        )
         self.metric_funcionarios.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
         self.metric_banco_total.grid(row=0, column=1, sticky="nsew", padx=5)
         self.metric_banco_saldo.grid(row=0, column=2, sticky="nsew", padx=(5, 0))
@@ -654,7 +667,9 @@ class SuccessPage(_ReportPage):
         )
 
     @staticmethod
-    def _criar_metrica(parent, titulo: str, valor: str) -> ctk.CTkFrame:
+    def _criar_metrica(
+        parent, titulo: str, valor: str
+    ) -> tuple[ctk.CTkFrame, ctk.CTkLabel]:
         box = ctk.CTkFrame(
             parent,
             fg_color=BOX_BACKGROUND,
@@ -675,8 +690,7 @@ class SuccessPage(_ReportPage):
             text_color=TEXT_PRIMARY,
         )
         label_valor.pack(pady=(0, 12))
-        box.valor_label = label_valor
-        return box
+        return box, label_valor
 
     def atualizar_metricas(
         self,
@@ -684,9 +698,9 @@ class SuccessPage(_ReportPage):
         banco_total: object,
         banco_saldo: object,
     ) -> None:
-        self.metric_funcionarios.valor_label.configure(text=str(funcionarios))
-        self.metric_banco_total.valor_label.configure(text=str(banco_total))
-        self.metric_banco_saldo.valor_label.configure(text=str(banco_saldo))
+        self.label_metric_funcionarios.configure(text=str(funcionarios))
+        self.label_metric_banco_total.configure(text=str(banco_total))
+        self.label_metric_banco_saldo.configure(text=str(banco_saldo))
 
     def atualizar_caminho(self, caminho: object) -> None:
         self.label_caminho.configure(text=str(caminho))

@@ -1,4 +1,4 @@
-from app.services.time_service import para_minutos, formatar_horas
+from app.domain import formatar_horas, para_minutos
 
 def test_para_minutos():
     assert para_minutos("01:30") == 90

@@ -36,13 +36,13 @@ Domínio    Serviços    Relatórios
 1. O CSV é validado, carregado e tem seu cabeçalho lido da primeira linha.
 2. O filtro de departamento é aplicado.
 3. Cada linha vira um `RegistroFuncionario`, mantendo horas em minutos.
-4. A matrícula é reduzida aos três dígitos finais somente na saída.
+4. A matrícula completa é preservada como texto e o CPF é removido da saída.
 5. Os totais da aba principal são calculados pelos serviços existentes.
 6. Os geradores criam `SALDO`, `RANKING` e `RESUMO` sem recalcular horas.
 7. A aba principal é formatada e o workbook é salvo em XLSX.
 
 Na entrada direta pelo RHiD, a integração solicita o `extrato` CSV agrupado por
-funcionário, com exatamente as 13 colunas do contrato, acompanha o processamento
+funcionário, sem solicitar CPF, acompanha o processamento
 remoto por GUID e valida que exista somente uma linha por matrícula antes de gravar
 um CSV temporário.
 Esse arquivo entra no mesmo `processar_arquivo`; portanto não existe um segundo
@@ -77,4 +77,24 @@ A API pública usada pelo controlador continua sendo:
 - `obter_departamentos(caminho_arquivo)`
 - `processar_arquivo(caminho_arquivo, caminho_saida, ...)`
 
-A fixture anônima em `tests/fixtures/` protege cabeçalhos, filtros, totais, abas, homônimos e privacidade da matrícula.
+A fixture anônima em `tests/fixtures/` protege cabeçalhos, filtros, totais, abas, homônimos e a remoção do CPF.
+
+## Estado e persistência
+
+`EstadoInterface` centraliza as transições visuais: vazio, pronto,
+processando, concluído e erro. A janela traduz o estado em textos e habilitação
+dos controles; o controller não altera widgets diretamente.
+
+Preferências, histórico e auditoria ficam fora do repositório e são tratados como
+efeitos auxiliares. O resultado principal é o XLSX: uma falha ao registrar
+histórico ou auditoria é registrada no log, mas não transforma um arquivo salvo
+com sucesso em aparente falha.
+
+## Pontos de extensão
+
+- uma nova origem de dados deve produzir o mesmo contrato CSV ou registros
+  equivalentes e entrar pela pipeline comum;
+- uma nova aba deve receber `RegistroFuncionario` e não reler a worksheet;
+- uma nova tela deve ser adicionada ao roteamento de `navigation.py` e exposta
+  pela fachada de `MainWindow`;
+- novos dados sensíveis exigem revisão de saída, logs, histórico e temporários.

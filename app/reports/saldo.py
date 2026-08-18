@@ -22,7 +22,7 @@ def criar_aba_saldo(
     ws.append(
         [
             "Nome",
-            "Final da matrícula",
+            "Número de matrícula",
             "Setor",
             "Banco Total",
             "Banco Saldo",
@@ -34,7 +34,7 @@ def criar_aba_saldo(
         ws.append(
             [
                 registro.nome,
-                registro.final_matricula,
+                registro.matricula,
                 registro.departamento,
                 formatar_horas(registro.banco_total_minutos),
                 formatar_horas(registro.banco_saldo_minutos),

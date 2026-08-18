@@ -311,10 +311,9 @@ def test_catalogo_prioriza_cabecalho_oficial_quando_nome_interno_colide():
 
     selecionadas = cliente._propriedades_relatorio()
 
-    assert selecionadas[6]["propertyName"] == "horasUteis"
-    assert selecionadas[6]["headerText"] == "Horas Previstas"
-    assert selecionadas[10]["propertyName"] == "horasExtrasCalculadas"
-    assert selecionadas[10]["headerText"] == "Extras Total"
+    por_cabecalho = {item["headerText"]: item for item in selecionadas}
+    assert por_cabecalho["Horas Previstas"]["propertyName"] == "horasUteis"
+    assert por_cabecalho["Extras Total"]["propertyName"] == "horasExtrasCalculadas"
 
 
 def test_gera_csv_oficial_com_filtros_colunas_polling_e_download():
@@ -373,8 +372,8 @@ def test_gera_csv_oficial_com_filtros_colunas_polling_e_download():
         "Person.name",
         "Person.registration",
         "Department.name",
-        "Person.cpf",
     ]
+    assert "Person.cpf" not in payload["listPersonInfo"]
     assert payload["listColumns"][-2:] == [
         "saldoBancoAjustadoMaisCredDeb",
         "saldoBancoFinalDia",

@@ -8,7 +8,7 @@ class RegistroFuncionario:
     """Dados de um funcionario usados para compor os relatorios."""
 
     nome: str
-    final_matricula: str
+    matricula: str
     departamento: str | None
     banco_total_minutos: int
     banco_saldo_minutos: int

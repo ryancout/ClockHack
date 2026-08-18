@@ -43,12 +43,12 @@ def criar_aba_ranking(
 
     ws["A1"] = "DEVEDORES - ABAIXO DE -8 HORAS"
     ws["A1"].font = estilos["titulo"]
-    ws.append(["Funcionário", "Final da matrícula", "Departamento", "Banco Saldo"])
+    ws.append(["Funcionário", "Número de matrícula", "Departamento", "Banco Saldo"])
     for registro in negativos:
         ws.append(
             [
                 registro.nome,
-                registro.final_matricula,
+                registro.matricula,
                 registro.departamento,
                 formatar_horas(registro.banco_saldo_minutos),
             ]
@@ -57,12 +57,12 @@ def criar_aba_ranking(
     inicio_segunda_secao = ws.max_row + 3
     ws.cell(row=inicio_segunda_secao, column=1, value="HORAS EXTRAS - ACIMA DE 8 HORAS")
     ws.cell(row=inicio_segunda_secao, column=1).font = estilos["titulo"]
-    ws.append(["Funcionário", "Final da matrícula", "Departamento", "Banco Saldo"])
+    ws.append(["Funcionário", "Número de matrícula", "Departamento", "Banco Saldo"])
     for registro in positivos:
         ws.append(
             [
                 registro.nome,
-                registro.final_matricula,
+                registro.matricula,
                 registro.departamento,
                 formatar_horas(registro.banco_saldo_minutos),
             ]

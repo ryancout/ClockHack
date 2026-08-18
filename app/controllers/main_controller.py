@@ -8,6 +8,7 @@ from tkinter import filedialog, messagebox
 from app.core.config import TIPOS_ARQUIVO_ENTRADA
 from app.core.exceptions import AppError, SobrescritaCanceladaError
 from app.core.logger import logger
+from app.domain import formatar_horas, para_minutos
 from app.integrations.rhid_client import RhidApiError, RhidClient, RhidTenantRequired
 from app.integrations.rhid_report_service import RhidReportPlan, processar_relatorio_rhid
 from app.services.audit_service import registrar_evento
@@ -15,7 +16,6 @@ from app.services.background_task_runner import BackgroundTaskRunner
 from app.services.file_service import garantir_extensao_xlsx, nome_curto, sugerir_nome_saida
 from app.services.history_service import registrar_historico, ultimos_processamentos
 from app.services.preferences_service import carregar_preferencias, salvar_preferencias
-from app.services.time_service import formatar_horas, para_minutos
 from app.services.validator_service import validar_arquivo_entrada
 from app.services.workbook_pipeline_service import obter_departamentos, processar_arquivo
 from app.ui.view_state import EstadoInterface

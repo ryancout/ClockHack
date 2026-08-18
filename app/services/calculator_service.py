@@ -1,5 +1,7 @@
+from app.domain import para_minutos
+
+
 def calcular_totais(ws, col_nome, col_bt, col_bs):
-    from app.services.time_service import para_minutos
     soma_bt = 0
     soma_bs = 0
     quantidade_funcionarios = 0

@@ -5,7 +5,7 @@ import os
 from app.domain import (
     RegistroFuncionario,
     formatar_horas,
-    obter_final_matricula,
+    normalizar_matricula,
     para_minutos,
 )
 from app.reports import criar_aba_ranking, criar_aba_resumo, criar_aba_saldo
@@ -53,7 +53,7 @@ def _extrair_registros(ws, colunas):
     for row in range(2, ws.max_row + 1):
         nome = ws.cell(row=row, column=col_nome).value
         matricula = ws.cell(row=row, column=col_matricula).value
-        final_matricula = obter_final_matricula(matricula)
+        matricula = normalizar_matricula(matricula)
         departamento = ws.cell(row=row, column=col_depart).value
         banco_total_valor = ws.cell(row=row, column=col_bt).value
         banco_saldo_valor = ws.cell(row=row, column=col_bs).value
@@ -65,7 +65,7 @@ def _extrair_registros(ws, colunas):
         registros.append(
             RegistroFuncionario(
                 nome=nome,
-                final_matricula=final_matricula,
+                matricula=matricula,
                 departamento=departamento,
                 banco_total_minutos=para_minutos(banco_total_valor),
                 banco_saldo_minutos=para_minutos(banco_saldo_valor),
@@ -76,13 +76,21 @@ def _extrair_registros(ws, colunas):
     return registros
 
 
-def _mascarar_matriculas_na_planilha(ws, col_matricula):
-    """Mantém somente os três dígitos finais da matrícula na saída."""
-    ws.cell(row=1, column=col_matricula, value="Final da matrícula")
+def _normalizar_matriculas_na_planilha(ws, col_matricula):
+    """Mantém a matrícula completa e força sua gravação como texto."""
+    ws.cell(row=1, column=col_matricula, value="Número de matrícula")
     for row in range(2, ws.max_row + 1):
         cell = ws.cell(row=row, column=col_matricula)
-        cell.value = obter_final_matricula(cell.value)
+        cell.value = normalizar_matricula(cell.value)
         cell.number_format = "@"
+
+
+def _remover_cpf_da_planilha(ws, colunas):
+    """Remove CPF da saída mesmo quando ele existe no CSV de entrada."""
+    coluna_cpf = colunas.get("cpf do funcionário")
+    if coluna_cpf:
+        ws.delete_cols(coluna_cpf, 1)
+    return coluna_cpf
 
 
 def _atualizar_abas_auxiliares(
@@ -134,10 +142,16 @@ def processar_arquivo(
 
     aplicar_filtro_departamento(ws, col_depart, departamento)
     registros = _extrair_registros(ws, colunas)
-    _mascarar_matriculas_na_planilha(ws, col_matricula)
+    _normalizar_matriculas_na_planilha(ws, col_matricula)
 
     resultado_calc = calcular_totais(ws, col_nome, col_bt, col_bs)
     validar_resultado(resultado_calc["quantidade_funcionarios"])
+
+    coluna_cpf_removida = _remover_cpf_da_planilha(ws, colunas)
+    if coluna_cpf_removida:
+        col_nome -= int(col_nome > coluna_cpf_removida)
+        col_bt -= int(col_bt > coluna_cpf_removida)
+        col_bs -= int(col_bs > coluna_cpf_removida)
 
     escrever_resultado(
         ws,

@@ -8,6 +8,12 @@ O projeto inclui:
 - `app/assets/icon.ico`
 - `main.spec`
 
+Instale primeiro as dependências de desenvolvimento:
+
+```bat
+python -m pip install -r requirements-dev.txt
+```
+
 ## Como gerar o EXE
 
 Execute:
@@ -42,3 +48,10 @@ O instalador padrao do Windows sera gerado em:
 ```bat
 dist\FASJornada_Setup_X.X.X.exe
 ```
+
+## Release completa
+
+`build_tools\build_release_auto_version.bat` sincroniza versão, gera o EXE e o
+ZIP portátil e prepara o envio do código. Antes de criar tag/release, valide os
+artefatos e gere `SHA256SUMS.txt`. Nunca inclua `data`, `logs`, relatórios reais,
+`.git`, caches ou credenciais no pacote.

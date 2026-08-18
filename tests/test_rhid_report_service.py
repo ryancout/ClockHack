@@ -1,3 +1,5 @@
+import csv
+import io
 from datetime import date
 from pathlib import Path
 
@@ -9,6 +11,18 @@ from app.integrations.rhid_report_service import RhidReportPlan, processar_relat
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "relatorio_contrato_anonimo.csv"
+
+
+def _fixture_rhid_sem_cpf() -> bytes:
+    entrada = csv.reader(
+        io.StringIO(FIXTURE.read_text(encoding="utf-8-sig"), newline=""),
+        delimiter=";",
+    )
+    saida = io.StringIO(newline="")
+    escritor = csv.writer(saida, delimiter=";", lineterminator="\r\n")
+    for linha in entrada:
+        escritor.writerow(linha[:3] + linha[4:])
+    return saida.getvalue().encode("utf-8-sig")
 
 
 class FakeRhidClient:
@@ -31,7 +45,7 @@ class FakeRhidClient:
 
 
 def test_relatorio_rhid_reutiliza_pipeline_e_remove_csv_temporario(tmp_path):
-    cliente = FakeRhidClient(FIXTURE.read_bytes())
+    cliente = FakeRhidClient(_fixture_rhid_sem_cpf())
     saida = tmp_path / "relatorio_rhid.xlsx"
     plano = RhidReportPlan(
         company_id=7,
@@ -56,10 +70,11 @@ def test_relatorio_rhid_reutiliza_pipeline_e_remove_csv_temporario(tmp_path):
 
     workbook = load_workbook(saida, read_only=True)
     assert workbook.sheetnames == ["Sheet", "SALDO", "RANKING", "RESUMO"]
+    assert "CPF do funcionário" not in [cell.value for cell in workbook.active[1]]
 
 
 def test_relatorio_rhid_respeita_abas_opcionais(tmp_path):
-    cliente = FakeRhidClient(FIXTURE.read_bytes())
+    cliente = FakeRhidClient(_fixture_rhid_sem_cpf())
     saida = tmp_path / "relatorio_rhid_sem_abas.xlsx"
     plano = RhidReportPlan(
         company_id=7,
@@ -87,13 +102,13 @@ def test_relatorio_rhid_respeita_abas_opcionais(tmp_path):
 def test_relatorio_rhid_recusa_matricula_duplicada_sem_somar_saldos(tmp_path):
     cabecalho = (
         "Nome do funcionário;Número de matrícula;Nome do departamento;"
-        "CPF do funcionário;Total Normais;Total Trabalhado;Horas Previstas;"
+        "Total Normais;Total Trabalhado;Horas Previstas;"
         "Dia Falta;Falta e Atraso;Abono;Extras Total;Banco Total;Banco Saldo\r\n"
     )
     conteudo = (
         cabecalho
-        + "Pessoa;MAT-0001;Operações;11111111111;08:00;08:00;08:00;0;0:00;0:00;0:00;1:00;2:00\r\n"
-        + "Pessoa;MAT-0001;Operações;11111111111;08:00;08:00;08:00;0;0:00;0:00;0:00;-0:30;1:30\r\n"
+        + "Pessoa;MAT-0001;Operações;08:00;08:00;08:00;0;0:00;0:00;0:00;1:00;2:00\r\n"
+        + "Pessoa;MAT-0001;Operações;08:00;08:00;08:00;0;0:00;0:00;0:00;-0:30;1:30\r\n"
     ).encode("utf-8-sig")
     cliente = FakeRhidClient(conteudo)
     saida = tmp_path / "nao_deve_existir.xlsx"
@@ -117,8 +132,8 @@ def test_relatorio_rhid_recusa_matricula_duplicada_sem_somar_saldos(tmp_path):
 def test_relatorio_rhid_recusa_formato_diario_de_inconsistencias(tmp_path):
     conteudo = (
         "Nome do funcionário;Número de matrícula;Nome do departamento;"
-        "CPF do funcionário;Dia;Total Normais;Total Trabalhado;Banco Total;Banco Saldo\r\n"
-        "Pessoa;MAT-0001;Operações;11111111111;2026-08-01;08:00;08:00;1:00;2:00\r\n"
+        "Dia;Total Normais;Total Trabalhado;Banco Total;Banco Saldo\r\n"
+        "Pessoa;MAT-0001;Operações;2026-08-01;08:00;08:00;1:00;2:00\r\n"
     ).encode("utf-8-sig")
     cliente = FakeRhidClient(conteudo)
     saida = tmp_path / "nao_deve_existir.xlsx"

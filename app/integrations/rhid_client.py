@@ -27,7 +27,6 @@ _COLUNAS_CSV_FAS_JORNADA = (
     ("Person", "name", "Nome do funcionário"),
     ("Person", "registration", "Número de matrícula"),
     ("Department", "name", "Nome do departamento"),
-    ("Person", "cpf", "CPF do funcionário"),
     ("Acjef", "horasTotalNaoExtra", "Total Normais"),
     ("Acjef", "totalHorasTrabalhadas", "Total Trabalhado"),
     ("Acjef", "horasUteis", "Horas Previstas"),
@@ -219,24 +218,21 @@ class RhidClient:
             return tuple(tenants)
 
         clientes = resposta.get("listCustomer")
-        return tuple(
-            RhidTenant(
-                domain=str(cliente.get("domain") or "").strip(),
-                name=str(cliente.get("name") or "").strip(),
-                tenant_id=(
-                    int(cliente.get("tenantId", cliente.get("id")))
-                    if cliente.get("tenantId", cliente.get("id")) is not None
-                    else None
-                ),
-                system_id=(
-                    int(cliente["systemId"])
-                    if cliente.get("systemId") is not None
-                    else None
-                ),
+        resultado = []
+        for cliente in clientes or []:
+            if not isinstance(cliente, dict) or not cliente.get("domain"):
+                continue
+            tenant_id = cliente.get("tenantId", cliente.get("id"))
+            system_id = cliente.get("systemId")
+            resultado.append(
+                RhidTenant(
+                    domain=str(cliente.get("domain") or "").strip(),
+                    name=str(cliente.get("name") or "").strip(),
+                    tenant_id=int(tenant_id) if tenant_id is not None else None,
+                    system_id=int(system_id) if system_id is not None else None,
+                )
             )
-            for cliente in (clientes or [])
-            if isinstance(cliente, dict) and cliente.get("domain")
-        )
+        return tuple(resultado)
 
     def listar_empresas(self) -> tuple[RhidCompany, ...]:
         registros = self._records(
@@ -383,13 +379,10 @@ class RhidClient:
     ) -> tuple[int, ...]:
         if department_id is None:
             return ()
-        if isinstance(department_id, (str, bytes)):
+        if isinstance(department_id, int):
             valores = (department_id,)
         else:
-            try:
-                valores = tuple(department_id)
-            except TypeError:
-                valores = (department_id,)
+            valores = tuple(department_id)
 
         ids = []
         for valor in valores:
@@ -508,13 +501,14 @@ class RhidClient:
         if resposta.get("error"):
             raise RhidApiError(str(resposta["error"]))
         guid = str(resposta.get("guid") or "").strip()
+        num_people = resposta.get("numPeople")
         logger.info(
             "Relatório RHiD iniciado: numPeople=%s, guid=%s.",
-            resposta.get("numPeople"),
+            num_people,
             "presente" if guid else "ausente",
         )
         try:
-            nenhuma_pessoa = int(resposta.get("numPeople")) == 0
+            nenhuma_pessoa = num_people is not None and int(num_people) == 0
         except (TypeError, ValueError):
             nenhuma_pessoa = False
         if nenhuma_pessoa:
@@ -669,8 +663,6 @@ class RhidClient:
             "Person.name",
             "Person.registration",
             "Person.numFolha",
-            "Person.cpf",
-            "Person.pis",
         }
         if not identificadores.intersection(informacoes_pessoa):
             informacoes_pessoa = [
@@ -820,6 +812,7 @@ class RhidClient:
 
     @staticmethod
     def _detalhe_erro_http(erro: HTTPError) -> str:
+        conteudo = ""
         try:
             conteudo = erro.read().decode("utf-8-sig")
             resposta = json.loads(conteudo)

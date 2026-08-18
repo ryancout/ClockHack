@@ -7,7 +7,7 @@ from app.reports import criar_aba_ranking
 def _registro(nome, saldo):
     return RegistroFuncionario(
         nome=nome,
-        final_matricula="001",
+        matricula="MAT-0001",
         departamento="Teste",
         banco_total_minutos=0,
         banco_saldo_minutos=saldo,

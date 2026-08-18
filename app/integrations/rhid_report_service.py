@@ -35,7 +35,6 @@ _CABECALHOS_RHID = (
     "Nome do funcionário",
     "Número de matrícula",
     "Nome do departamento",
-    "CPF do funcionário",
     "Total Normais",
     "Total Trabalhado",
     "Horas Previstas",
@@ -85,10 +84,7 @@ def _validar_csv_consolidado(conteudo_csv: bytes) -> None:
         )
 
     indice_matricula = indices[_normalizar("Número de matrícula")]
-    indice_cpf = indices[_normalizar("CPF do funcionário")]
     identidades = set()
-    matricula_por_cpf = {}
-    cpf_por_matricula = {}
     quantidade = 0
 
     for numero_linha, linha in enumerate(leitor, start=2):
@@ -98,25 +94,17 @@ def _validar_csv_consolidado(conteudo_csv: bytes) -> None:
             raise RhidApiError(f"O CSV do RHiD está incompleto na linha {numero_linha}.")
 
         matricula = _identificador_matricula(linha[indice_matricula])
-        cpf = re.sub(r"\D", "", str(linha[indice_cpf] or ""))
-        if not matricula and not cpf:
+        if not matricula:
             raise RhidApiError(
-                f"O CSV do RHiD possui funcionário sem matrícula e CPF na linha {numero_linha}."
+                f"O CSV do RHiD possui funcionário sem matrícula na linha {numero_linha}."
             )
 
-        if matricula and cpf:
-            cpf_anterior = cpf_por_matricula.setdefault(matricula, cpf)
-            matricula_anterior = matricula_por_cpf.setdefault(cpf, matricula)
-            if cpf_anterior != cpf or matricula_anterior != matricula:
-                raise RhidApiError("O RHiD retornou identificações conflitantes de funcionários.")
-
-        identidade = ("matricula", matricula) if matricula else ("cpf", cpf)
-        if identidade in identidades:
+        if matricula in identidades:
             raise RhidApiError(
                 "O RHiD retornou mais de uma linha para a mesma matrícula. "
                 "O Excel não foi gerado para evitar somar o saldo duas vezes."
             )
-        identidades.add(identidade)
+        identidades.add(matricula)
         quantidade += 1
 
     if quantidade == 0:

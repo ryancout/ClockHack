@@ -15,7 +15,7 @@ import tempfile
 from ctypes import wintypes
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Protocol
+from typing import NoReturn, Protocol
 
 from app.core.config import DATA_DIR
 
@@ -68,7 +68,7 @@ class _UnavailableCredentialBackend:
         return False
 
     @staticmethod
-    def _raise() -> None:
+    def _raise() -> NoReturn:
         raise CredentialStorageUnavailable(
             "O armazenamento seguro de credenciais esta disponivel somente no Windows."
         )

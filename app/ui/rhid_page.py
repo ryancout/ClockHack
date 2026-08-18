@@ -747,13 +747,15 @@ class RhidPage(ctk.CTkFrame):
 
         if len(unicos) == 1:
             tenant = next(iter(unicos.values()))
-            self._dominio_preenchido = str(tenant.domain).strip()
+            self._dominio_preenchido = str(
+                getattr(tenant, "domain", "") or ""
+            ).strip()
             email, senha, dominio, _lembrar = self.obter_credenciais_digitadas()
             self._ao_conectar(email, senha, dominio)
             return
 
         for tenant in unicos.values():
-            dominio = str(tenant.domain).strip()
+            dominio = str(getattr(tenant, "domain", "") or "").strip()
             nome = str(getattr(tenant, "name", "") or dominio).strip()
             rotulo = f"{nome} — {dominio}" if nome != dominio else dominio
             if rotulo in self._dominio_por_rotulo:

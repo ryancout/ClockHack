@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 8.1 — 2026-08-18
+
+- identificação de homônimos pela matrícula completa
+- remoção do CPF dos arquivos gerados e da solicitação feita ao RHiD
+- limpeza de arquivos e camadas antigas sem alteração das regras de cálculo
+- documentação técnica completa de arquitetura, módulos, fluxos, integração,
+  segurança, testes e distribuição
+- separação entre dependências de execução e de desenvolvimento
+
 ## 8.0 — 2026-08-18
 
 ### Principais novidades
@@ -17,7 +26,6 @@
 ### Relatórios e segurança
 
 - preservação do cálculo existente de Banco Total e Banco Saldo
-- identificação de homônimos pelos três últimos dígitos da matrícula
 - abas SALDO, RESUMO e RANKING selecionadas por padrão
 - validação do contrato CSV retornado pelo RHiD antes do processamento
 - gravação transacional dos arquivos para reduzir risco de saída incompleta

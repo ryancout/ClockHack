@@ -2,7 +2,7 @@
 
 **Relatório e Análise de Jornada.** Aplicativo desktop em Python para tratamento de relatórios de banco de horas, com cálculo automático, filtros, destaques visuais e geração de análises em Excel.
 
-**Versão atual: 8.0 — Windows 10/11**
+**Versão atual: 8.1 — Windows 10/11**
 
 [Baixar a versão mais recente](https://github.com/ryancout/ClockHack/releases/latest)
 
@@ -12,8 +12,8 @@
 
 Na página de releases, escolha uma das opções:
 
-- `FASJornada_Setup_8.0.exe` — instalador recomendado, com atalhos e desinstalação pelo Windows
-- `FASJornada_v8.0_portable.zip` — versão portátil; extraia o ZIP e execute `FASJornada.exe`
+- `FASJornada_Setup_8.1.exe` — instalador recomendado, com atalhos e desinstalação pelo Windows
+- `FASJornada_v8.1_portable.zip` — versão portátil; extraia o ZIP e execute `FASJornada.exe`
 
 O Windows pode exibir uma confirmação de segurança porque o aplicativo ainda não possui assinatura digital comercial. Confira se o arquivo foi baixado diretamente deste repositório antes de executá-lo.
 
@@ -28,7 +28,8 @@ O Windows pode exibir uma confirmação de segurança porque o aplicativo ainda 
 - filtro por departamento antes do cálculo
 - cálculo de **Banco Total** e **Banco Saldo**
 - linha **TOTAL** na aba principal preservando a planilha tratada
-- identifica homônimos pelos 3 últimos dígitos da matrícula na aba principal e nas abas **SALDO** e **RANKING**
+- identifica homônimos pela matrícula completa na aba principal e nas abas **SALDO** e **RANKING**
+- remove a coluna CPF de todos os arquivos Excel gerados e não a solicita na integração RHiD
 - destaque visual para saldos menores que `-8:00` e maiores que `8:00`
 - aba **RANKING** com top devedores e top horas extras
 - aba **RESUMO** com total por departamento
@@ -57,7 +58,9 @@ O Windows pode exibir uma confirmação de segurança porque o aplicativo ainda 
 - `main.spec` — build do PyInstaller
 - `version_info.txt` — propriedades do executável
 
-Os limites entre as camadas estão documentados em [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
+A documentação completa está no [índice técnico](docs/README.md), incluindo
+arquitetura, referência de todos os módulos, fluxos CSV/RHiD, segurança, testes
+e distribuição.
 
 ---
 
@@ -66,6 +69,12 @@ Os limites entre as camadas estão documentados em [docs/ARQUITETURA.md](docs/AR
 ```bash
 pip install -r requirements.txt
 python main.py
+```
+
+Para desenvolver, testar e empacotar:
+
+```bash
+pip install -r requirements-dev.txt
 ```
 
 ### Cancelamento do processamento

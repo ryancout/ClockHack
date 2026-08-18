@@ -128,16 +128,16 @@ def test_processing_page_atualiza_percentual_sem_janela_real():
 
 def test_success_page_atualiza_metricas_e_caminho_sem_janela_real():
     pagina = SimpleNamespace(
-        metric_funcionarios=SimpleNamespace(valor_label=WidgetFalso()),
-        metric_banco_total=SimpleNamespace(valor_label=WidgetFalso()),
-        metric_banco_saldo=SimpleNamespace(valor_label=WidgetFalso()),
+        label_metric_funcionarios=WidgetFalso(),
+        label_metric_banco_total=WidgetFalso(),
+        label_metric_banco_saldo=WidgetFalso(),
         label_caminho=WidgetFalso(),
     )
 
     SuccessPage.atualizar_metricas(pagina, 47, "12:30", "-03:15")
     SuccessPage.atualizar_caminho(pagina, r"C:\Relatorios\jornada.xlsx")
 
-    assert pagina.metric_funcionarios.valor_label.configuracao["text"] == "47"
-    assert pagina.metric_banco_total.valor_label.configuracao["text"] == "12:30"
-    assert pagina.metric_banco_saldo.valor_label.configuracao["text"] == "-03:15"
+    assert pagina.label_metric_funcionarios.configuracao["text"] == "47"
+    assert pagina.label_metric_banco_total.configuracao["text"] == "12:30"
+    assert pagina.label_metric_banco_saldo.configuracao["text"] == "-03:15"
     assert pagina.label_caminho.configuracao["text"].endswith("jornada.xlsx")
