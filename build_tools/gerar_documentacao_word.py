@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import runpy
 from datetime import date
 from pathlib import Path
 
@@ -13,11 +14,10 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Inches, Pt, RGBColor
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DOCS_DIR = ROOT / "docs"
-OUTPUT = DOCS_DIR / "FAS_Jornada_Documentacao_Tecnica_v8.1.docx"
-VERSION = "8.1"
+VERSION = str(runpy.run_path(ROOT / "app/core/version.py")["APP_VERSION"])
+OUTPUT = DOCS_DIR / f"FAS_Jornada_Documentacao_Tecnica_v{VERSION}.docx"
 
 CHAPTERS = (
     ("Visão geral", ROOT / "README.md"),
@@ -26,6 +26,7 @@ CHAPTERS = (
     ("Fluxos de processamento", DOCS_DIR / "FLUXOS.md"),
     ("Integração RHiD", DOCS_DIR / "INTEGRACAO_RHID.md"),
     ("Integração Power BI", DOCS_DIR / "INTEGRACAO_POWER_BI.md"),
+    ("Migração para Microsoft Fabric", DOCS_DIR / "MIGRACAO_POWER_BI_FABRIC.md"),
     ("Segurança e privacidade", DOCS_DIR / "SEGURANCA_E_PRIVACIDADE.md"),
     ("Desenvolvimento e testes", DOCS_DIR / "DESENVOLVIMENTO.md"),
     ("Instalador e empacotamento", DOCS_DIR / "INSTALADOR.md"),

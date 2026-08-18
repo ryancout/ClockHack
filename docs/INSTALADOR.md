@@ -60,7 +60,9 @@ powershell -ExecutionPolicy Bypass -File build_tools\build_release.ps1
 O atalho `build_tools\build_release_auto_version.bat` chama o mesmo processo.
 Ele não edita versões e não executa comandos Git. Antes do empacotamento, o
 script confirma que `app/core/version.py`, `version_info.txt` e
-`build_tools/FASJornada.iss` estão sincronizados e executa toda a validação.
+`build_tools/FASJornada.iss` estão sincronizados, confirma que o Tcl/Tk está
+disponível e executa toda a validação. O build é interrompido se o Python local
+não puder carregar a interface, evitando publicar um EXE sem Tkinter.
 
 Os arquivos são produzidos em `dist/`:
 

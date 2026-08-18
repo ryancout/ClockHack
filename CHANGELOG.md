@@ -1,6 +1,6 @@
 # Histórico de versões
 
-## Em desenvolvimento
+## 8.2 — 2026-08-18
 
 - diagnóstico somente leitura das conexões RHiD, Microsoft, workspace e modelo
 - isolamento do destino Power BI para permitir a futura migração do modelo Push

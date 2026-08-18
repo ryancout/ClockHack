@@ -1,2 +1,2 @@
 APP_NAME = "FAS Jornada"
-APP_VERSION = "8.1"
+APP_VERSION = "8.2"

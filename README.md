@@ -2,7 +2,7 @@
 
 **Relatório e Análise de Jornada.** Aplicativo desktop em Python para tratamento de relatórios de banco de horas, com cálculo automático, filtros, destaques visuais e geração de análises em Excel.
 
-**Versão atual: 8.1 — Windows 10/11**
+**Versão atual: 8.2 — Windows 10/11**
 
 [Baixar a versão mais recente](https://github.com/ryancout/ClockHack/releases/latest)
 
@@ -12,8 +12,8 @@
 
 Na página de releases, escolha uma das opções:
 
-- `FASJornada_Setup_8.1.exe` — instalador recomendado, com atalhos e desinstalação pelo Windows
-- `FASJornada_v8.1_portable.zip` — versão portátil; extraia o ZIP e execute `FASJornada.exe`
+- `FASJornada_Setup_8.2.exe` — instalador recomendado, com atalhos e desinstalação pelo Windows
+- `FASJornada_v8.2_portable.zip` — versão portátil; extraia o ZIP e execute `FASJornada.exe`
 
 O Windows pode exibir uma confirmação de segurança porque o aplicativo ainda não possui assinatura digital comercial. Confira se o arquivo foi baixado diretamente deste repositório antes de executá-lo.
 

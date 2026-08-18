@@ -40,6 +40,7 @@ jobs:
 
       - name: Validate source
         run: |
+          python -c "import tkinter; t = tkinter.Tcl(); print('Tcl/Tk', t.eval('info patchlevel'))"
           python -m pytest -q
           python -m pyright app
           python -m compileall -q app main.py

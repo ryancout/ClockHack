@@ -45,6 +45,7 @@ function Sign-Artifact([string]$Path) {
 
 $version = (python -c "from app.core.version import APP_VERSION; print(APP_VERSION)").Trim()
 Invoke-Checked { python build_tools\verify_release_version.py } 'Validação da versão'
+Invoke-Checked { python -c "import tkinter; t = tkinter.Tcl(); print('Tcl/Tk', t.eval('info patchlevel'))" } 'Validação do Tcl/Tk'
 Invoke-Checked { python -m pytest -q } 'Testes'
 Invoke-Checked { python -m pyright app } 'Análise estática'
 Invoke-Checked { python -m compileall -q app main.py } 'Compilação Python'
